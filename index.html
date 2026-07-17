@@ -1,461 +1,1205 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full overflow-hidden">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise Cloud & SSH Web Terminal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap');
-        body {
-            background-color: #05070f;
-            font-family: 'Fira Code', monospace;
-        }
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #090d16;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #1e293b;
-            border-radius: 3px;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Cloud & SSH Web Terminal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom Web Fonts and Icon Packs -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-darker: #04060a;
+            --bg-main: #080c14;
+            --bg-panel: #0f1524;
+            --terminal-accent: #6366f1;
+            --terminal-green: #10b981;
+            --terminal-cyan: #22d3ee;
+            --terminal-amber: #f59e0b;
+            --terminal-rose: #f43f5e;
+            --terminal-foreground: #cbd5e1;
+        }
+
+        /* Active Dracula Profile */
+        .theme-dracula {
+            --bg-darker: #1e1f29;
+            --bg-main: #282a36;
+            --bg-panel: #1d1f27;
+            --terminal-accent: #bd93f9;
+            --terminal-green: #50fa7b;
+            --terminal-cyan: #8be9fd;
+            --terminal-amber: #ffb86c;
+            --terminal-rose: #ff5555;
+            --terminal-foreground: #f8f8f2;
+        }
+
+        /* Active Matrix Profile */
+        .theme-matrix {
+            --bg-darker: #010801;
+            --bg-main: #021102;
+            --bg-panel: #051a05;
+            --terminal-accent: #00ff00;
+            --terminal-green: #39ff14;
+            --terminal-cyan: #00ffcc;
+            --terminal-amber: #adff2f;
+            --terminal-rose: #8a0303;
+            --terminal-foreground: #00ff00;
+        }
+
+        /* Active Cyberpunk Profile */
+        .theme-cyberpunk {
+            --bg-darker: #0c0813;
+            --bg-main: #140d24;
+            --bg-panel: #1c1233;
+            --terminal-accent: #ff007f;
+            --terminal-green: #39ff14;
+            --terminal-cyan: #00ffff;
+            --terminal-amber: #f6ec35;
+            --terminal-rose: #ff0055;
+            --terminal-foreground: #e0d1f7;
+        }
+
+        /* Active Ocean Profile */
+        .theme-ocean {
+            --bg-darker: #07111a;
+            --bg-main: #0c1a24;
+            --bg-panel: #112433;
+            --terminal-accent: #0284c7;
+            --terminal-green: #0d9488;
+            --terminal-cyan: #38bdf8;
+            --terminal-amber: #eab308;
+            --terminal-rose: #be123c;
+            --terminal-foreground: #e2e8f0;
+        }
+
+        body {
+            background-color: var(--bg-darker);
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease;
+        }
+
+        .mono-font {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-darker);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        /* Scanlines and flicker simulation */
+        .scanlines {
+            position: relative;
+            overflow: hidden;
+        }
+        .scanlines::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 10;
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+        }
+
+        @keyframes crt-flicker {
+            0% { opacity: 0.985; }
+            50% { opacity: 0.998; }
+            100% { opacity: 0.985; }
+        }
+        .crt-flicker-active {
+            animation: crt-flicker 0.25s infinite;
+        }
+
+        /* Custom glow helper for active state profiles */
+        .accent-glow {
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
+        }
+        .theme-cyberpunk .accent-glow {
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.25);
+        }
+        .theme-matrix .accent-glow {
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+        }
+    </style>
 </head>
-<body class="text-slate-200 min-h-screen flex flex-col p-4 md:p-8">
+<body class="text-slate-200 h-screen w-screen overflow-hidden flex flex-col p-2 sm:p-4 md:p-5 select-none">
 
-    <!-- Terminal Container -->
-    <div class="max-w-6xl w-full mx-auto flex-1 flex flex-col bg-[#080c14] border border-slate-800 rounded-lg overflow-hidden shadow-2xl">
-        
-        <!-- Window Header -->
-        <div class="bg-[#0f1524] px-4 py-3 border-b border-slate-800/80 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded-full bg-rose-500 animate-pulse"></span>
-                <span class="w-3 h-3 rounded-full bg-amber-500"></span>
-                <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                <span class="text-xs text-slate-400 ml-2 font-semibold" id="terminal-title">root@cloud-shell: ~/workspace</span>
-            </div>
-            <div class="flex items-center gap-4 text-xs text-slate-500">
-                <span id="network-badge" class="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-bold">LOCAL HYBRID ENGINE</span>
-                <span>bash 5.2</span>
-            </div>
-        </div>
+    <!-- Toast Notification Banner Container (Replaces alert() smoothly) -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
-        <!-- Terminal Workspace Area -->
-        <div id="terminal-body" class="flex-1 p-6 overflow-y-auto space-y-4 text-sm flex flex-col justify-between">
-            
-            <!-- Terminal History Logs -->
-            <div id="terminal-history" class="space-y-3">
-                <div class="text-indigo-400 font-bold tracking-wide text-base leading-none">
-   _____  _____ _    _  __          ___      _______ 
-  / ____|/ ____| |  | | \ \        / / |    |__   __|
- | (___ | (___ | |__| |  \ \  /\  / /| |__     | |   
-  \___ \ \___ \|  __  |   \ \/  \/ / | '_ \    | |   
-  ____) |____) | |  | |    \  /\  /  | |_) |   | |   
- |_____/|_____/|_|  |_|     \/  \/   |_.__/    |_|   
-                </div>
-                <div class="text-xs text-slate-400 mt-2">
-                    System active with local VM emulation. Secure SSH protocol ready for production machines.
-                    <br>Type <span class="text-emerald-400 font-bold">ssh user@host</span> to connect your remote live server directly from this web page!
-                </div>
-                <hr class="border-slate-800/60 my-2">
-            </div>
+    <!-- Main Workspace Container -->
+    <div class="max-w-7xl w-full flex-1 flex flex-col lg:flex-row bg-[var(--bg-main)] border border-slate-800/80 rounded-xl overflow-hidden shadow-2xl accent-glow transition-all duration-300 min-h-0 mx-auto">
+        
+        <!-- Interactive Sidebar Pane -->
+        <aside class="w-full lg:w-64 bg-[var(--bg-panel)] border-b lg:border-b-0 lg:border-r border-slate-800/60 p-4 flex flex-col gap-5 select-none shrink-0 transition-colors duration-300 max-h-[35vh] lg:max-h-none overflow-y-auto">
+            <!-- Sidebar Title / Brand -->
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center">
+                    <span class="text-indigo-400 font-bold text-sm">⚡</span>
+                </div>
+                <div>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">CloudConsole</h2>
+                    <p class="text-[10px] text-slate-500 font-semibold">v3.1.0 Enterprise</p>
+                </div>
+            </div>
 
-            <!-- Active Input Line -->
-            <div class="mt-auto pt-4 border-t border-slate-900/60 flex items-center gap-2">
-                <span id="prompt-decorator" class="text-emerald-500 font-bold shrink-0">root@cloud-shell:<span id="current-path" class="text-cyan-400">~</span>#</span>
-                <input type="text" id="terminal-input" autofocus autocomplete="off" class="bg-transparent text-slate-100 flex-1 outline-none border-none focus:ring-0 font-medium placeholder-slate-600" placeholder="Type command (e.g. ssh user@yourserver.com)..." />
-            </div>
-        </div>
-    </div>
+            <hr class="border-slate-800/60">
 
-    <!-- Interactive SSH Connection Overlay Model (For Web Handshake) -->
-    <div id="ssh-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-[#0c101b] border border-indigo-500/40 max-w-md w-full rounded-lg shadow-2xl p-6">
-            <h3 class="text-lg font-bold text-indigo-400 flex items-center gap-2 mb-2">
-                🔑 Establish Secure Tunnel Connection
-            </h3>
-            <p class="text-xs text-slate-400 mb-6">Enter details to bridge a secure SSH link to your target server.</p>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target SSH Host Address</label>
-                    <input type="text" id="ssh-host" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" placeholder="e.g. 192.168.1.100 or myserver.com">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Username</label>
-                        <input type="text" id="ssh-user" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" placeholder="ubuntu / root">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Port</label>
-                        <input type="number" id="ssh-port" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" value="22">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Authentication Method</label>
-                    <select id="ssh-auth" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" onchange="toggleSSHFields()">
-                        <option value="password">Password</option>
-                        <option value="key">Private SSH Key (.pem / .id_rsa)</option>
-                    </select>
-                </div>
-                <div id="ssh-pass-wrapper">
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Password</label>
-                    <input type="password" id="ssh-password" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" placeholder="••••••••">
-                </div>
-                <div id="ssh-key-wrapper" class="hidden">
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Private Key String</label>
-                    <textarea id="ssh-key" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500 h-24 font-mono" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
-                </div>
-                <div class="flex gap-3 justify-end pt-2">
-                    <button onclick="closeSSHModal()" class="px-4 py-2 rounded text-sm font-semibold bg-slate-900 border border-slate-800 hover:bg-slate-800 transition">Cancel</button>
-                    <button onclick="connectSSH()" class="px-4 py-2 rounded text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg shadow-indigo-600/35">Tunnel & Connect</button>
-                </div>
-            </div>
-        </div>
-    </div>
+            <!-- Virtual File Explorer Widget -->
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Workspace RAMFS</span>
+                    <span class="text-[9px] bg-indigo-950/80 border border-indigo-500/20 text-indigo-400 px-1.5 py-0.2 rounded font-mono">LIVE</span>
+                </div>
+                <div class="space-y-1.5 text-xs text-slate-400" id="sidebar-files">
+                    <!-- Dynamic Files loaded from script here -->
+                </div>
+            </div>
 
-    <script>
-        const terminalHistory = document.getElementById('terminal-history');
-        const terminalInput = document.getElementById('terminal-input');
-        const currentPathLabel = document.getElementById('current-path');
-        const terminalBody = document.getElementById('terminal-body');
-        const sshModal = document.getElementById('ssh-modal');
-        const terminalTitle = document.getElementById('terminal-title');
-        const networkBadge = document.getElementById('network-badge');
-        const promptDecorator = document.getElementById('prompt-decorator');
+            <!-- Active Connections Registry -->
+            <div class="flex flex-col gap-2 mt-auto pt-4 border-t border-slate-800/60">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Simulated Nodes</span>
+                <div class="space-y-1.5 text-xs">
+                    <div onclick="quickConnect('ubuntu', 'dev-server.cloud')" class="flex items-center justify-between px-2 py-1.5 rounded bg-slate-900/60 hover:bg-slate-800/60 border border-slate-800/60 cursor-pointer group transition">
+                        <div class="flex items-center gap-2 text-slate-300">
+                            <span class="w-1.5 h-1.5 rounded-full bg-slate-500 group-hover:bg-indigo-400 transition"></span>
+                            <span class="font-mono text-[11px]">dev-server.cloud</span>
+                        </div>
+                        <span class="text-[10px] text-slate-500 font-mono">ssh</span>
+                    </div>
+                    <div onclick="quickConnect('root', 'prod-db.internal')" class="flex items-center justify-between px-2 py-1.5 rounded bg-slate-900/60 hover:bg-slate-800/60 border border-slate-800/60 cursor-pointer group transition">
+                        <div class="flex items-center gap-2 text-slate-300">
+                            <span class="w-1.5 h-1.5 rounded-full bg-slate-500 group-hover:bg-indigo-400 transition"></span>
+                            <span class="font-mono text-[11px]">prod-db.internal</span>
+                        </div>
+                        <span class="text-[10px] text-slate-500 font-mono">ssh</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
 
-        // Shell State
-        let currentPath = ["workspace"]; 
-        let commandHistory = [];
-        let historyIndex = -1;
-        let installedPackages = ["bash", "curl", "wget", "git"];
-        let isSSHActive = false;
-        let sshTargetServer = "";
+        <!-- Terminal Body & Control Workspace -->
+        <main class="flex-1 flex flex-col bg-[var(--bg-main)] overflow-hidden relative transition-colors duration-300 min-h-0">
+            
+            <!-- Window Header / Bar -->
+            <div class="bg-[var(--bg-panel)] px-4 py-3 border-b border-slate-800/60 flex items-center justify-between transition-colors duration-300 shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-rose-500/80 hover:bg-rose-500 cursor-pointer"></span>
+                    <span class="w-3 h-3 rounded-full bg-amber-500/80 hover:bg-amber-500 cursor-pointer"></span>
+                    <span class="w-3 h-3 rounded-full bg-emerald-500/80 hover:bg-emerald-500 cursor-pointer"></span>
+                    <span class="text-xs text-slate-400 ml-2 font-semibold font-mono select-all" id="terminal-title">root@cloud-shell: ~/workspace</span>
+                </div>
+                
+                <div class="flex items-center gap-3 text-xs select-none">
+                    <!-- Theme Selector Selector -->
+                    <select id="theme-menu-select" onchange="switchTheme(this.value)" class="text-[10px] px-2 py-0.5 rounded border border-slate-800 bg-slate-950/80 text-slate-400 outline-none focus:border-indigo-500 font-mono">
+                        <option value="default">Default Dark</option>
+                        <option value="dracula">Dracula Code</option>
+                        <option value="matrix">Matrix Rain</option>
+                        <option value="cyberpunk">Cyberpunk Neon</option>
+                        <option value="ocean">Ocean Breeze</option>
+                    </select>
 
-        // Virtual RAM Filesystem
-        const fileSystem = {
-            "workspace": {
-                type: "dir",
-                content: {
-                    "setup_guide.md": { type: "file", content: "# Cloud Environment Guide\nRun 'ssh user@host' to connect to your live remote infrastructure.\nUse 'download [filename]' to save files locally." },
-                    "ansible_playbook.yml": { type: "file", content: "---\n- name: Configure Webserver\n  hosts: remote\n  tasks:\n    - name: Ensure server is running\n      ping:" }
-                }
-            }
-        };
+                    <!-- CRT Monitor Toggle Button -->
+                    <button onclick="toggleCRTMode()" class="px-2 py-0.5 rounded border border-slate-800 bg-slate-950/80 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition flex items-center gap-1 font-mono">
+                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="text-[10px]">CRT VIEW</span>
+                    </button>
+                    <span id="network-badge" class="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-bold text-[10px] tracking-wide border border-emerald-500/20 font-mono transition-all duration-300">LOCAL ENGINE</span>
+                </div>
+            </div>
 
-        function toggleSSHFields() {
-            const method = document.getElementById('ssh-auth').value;
-            if (method === 'password') {
-                document.getElementById('ssh-pass-wrapper').classList.remove('hidden');
-                document.getElementById('ssh-key-wrapper').classList.add('hidden');
-            } else {
-                document.getElementById('ssh-pass-wrapper').classList.add('hidden');
-                document.getElementById('ssh-key-wrapper').classList.remove('hidden');
-            }
-        }
+            <!-- Terminal Workspace Screen Layer (Fit perfectly, scroll inner history) -->
+            <div id="terminal-workspace" class="flex-1 p-4 sm:p-5 overflow-hidden flex flex-col scanlines crt-flicker-active relative min-h-0">
+                
+                <!-- Terminal History Stream (Scrolls Internally) -->
+                <div id="terminal-history" class="flex-1 overflow-y-auto space-y-3 font-mono text-[13px] leading-relaxed pr-2">
+                    <div class="text-indigo-400 font-bold tracking-wide text-xs sm:text-sm leading-tight whitespace-pre font-mono" id="hero-banner">
+ _____ _                 _   _____ _          _ _ 
+/  __ \ |               | | /  ___| |        | | |
+| /  \/ | ___  _   _  __| | \ `--.| |__   ___| | |
+| |   | |/ _ \| | | |/ _` |  `--. \ '_ \ / _ \ | |
+| \__/\ | (_) | |_| | (_| | /\__/ / | | |  __/ | |
+ \____/_|\___/ \__,_|\__,_| \____/|_| |_|\___|_|_|</div>
+                    <div class="text-xs text-slate-400 mt-2 leading-relaxed">
+                        Secure Sandbox Kernel Simulator initialized. Comprehensive CLI active.
+                        <br>Type <span class="text-emerald-400 font-bold hover:underline cursor-pointer" onclick="focusAndInsert('help')">'help'</span> for operations, <span class="text-indigo-400 font-bold hover:underline cursor-pointer" onclick="focusAndInsert('neofetch')">'neofetch'</span> for specifications, <span class="text-cyan-400 font-bold hover:underline cursor-pointer" onclick="focusAndInsert('nano setup_guide.md')">'nano [file]'</span> to launch the in-terminal editor, or <span class="text-amber-500 font-bold">ssh user@host</span> to connect to remote simulated targets.
+                    </div>
+                    <hr class="border-slate-800/40 my-2">
+                </div>
 
-        function closeSSHModal() {
-            sshModal.classList.add('hidden');
-        }
+                <!-- FULL SCREEN IN-TERMINAL NANO TEXT EDITOR OVERLAY (Hidden by default) -->
+                <div id="nano-editor" class="hidden absolute inset-0 bg-[#161925] border border-slate-700/50 z-20 flex flex-col font-mono text-[13px]">
+                    <div class="bg-[#1e2233] text-slate-200 px-3 py-1.5 flex justify-between border-b border-slate-700/50 select-none">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-amber-500">UW-NANO 4.8</span>
+                            <span class="text-slate-400">File:</span>
+                            <span id="nano-filename" class="text-cyan-400 font-bold">setup_guide.md</span>
+                        </div>
+                        <div class="text-xs text-slate-400">RAMFS Mode</div>
+                    </div>
+                    <textarea id="nano-textarea" class="flex-1 bg-[#10121e] text-slate-100 p-4 outline-none resize-none border-none focus:ring-0 leading-relaxed font-mono w-full h-full" spellcheck="false"></textarea>
+                    <div class="bg-[#1e2233] text-slate-300 p-2 border-t border-slate-700/40 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 text-[11px] select-none shrink-0">
+                        <div class="flex items-center gap-1"><kbd class="bg-slate-800 px-1 rounded text-slate-100 font-bold">Ctrl+X</kbd> <span>Exit</span></div>
+                        <div class="flex items-center gap-1"><kbd class="bg-slate-800 px-1 rounded text-slate-100 font-bold">Ctrl+O</kbd> <span>Save File</span></div>
+                        <div class="flex items-center gap-1"><kbd class="bg-slate-800 px-1 rounded text-slate-100 font-bold">Ctrl+K</kbd> <span>Cut Text</span></div>
+                        <div class="flex items-center gap-1"><kbd class="bg-slate-800 px-1 rounded text-slate-100 font-bold">Ctrl+U</kbd> <span>Uncut Text</span></div>
+                        <div class="flex items-center gap-1"><kbd class="bg-slate-800 px-1 rounded text-slate-100 font-bold">Tab</kbd> <span>Indent</span></div>
+                        <div class="flex items-center gap-1 text-slate-400 italic">Virtual Buffer</div>
+                    </div>
+                </div>
 
-        function openSSHModal(prefillUser = '', prefillHost = '') {
-            if(prefillUser) document.getElementById('ssh-user').value = prefillUser;
-            if(prefillHost) document.getElementById('ssh-host').value = prefillHost;
-            sshModal.classList.remove('hidden');
-        }
+                <!-- Custom Interactive Quick Suggestion Chips (Pinned bottom utility) -->
+                <div class="flex flex-wrap gap-2 py-2 mt-2 border-t border-slate-900/40 select-none shrink-0 items-center">
+                    <span class="text-xs text-slate-500 self-center font-bold mr-1">QUICK ACTIONS:</span>
+                    <button onclick="executeQuick('help')" class="text-xs px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white transition">help</button>
+                    <button onclick="executeQuick('ls')" class="text-xs px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white transition">ls</button>
+                    <button onclick="executeQuick('neofetch')" class="text-xs px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white transition">neofetch</button>
+                    <button onclick="executeQuick('htop')" class="text-xs px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white transition">htop</button>
+                    <button onclick="executeQuick('tree')" class="text-xs px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white transition">tree</button>
+                </div>
 
-        // Simulating the secure bridge connection to real server API endpoints
-        function connectSSH() {
-            const host = document.getElementById('ssh-host').value;
-            const user = document.getElementById('ssh-user').value;
-            const port = document.getElementById('ssh-port').value;
-            
-            if(!host || !user) {
-                alert("Please fill in Host and Username!");
-                return;
-            }
+                <!-- Active Input Line -->
+                <div class="pt-3 border-t border-slate-900/40 flex items-center gap-2 shrink-0">
+                    <span id="prompt-decorator" class="text-emerald-500 font-bold shrink-0 select-none font-mono">root@cloud-shell:<span id="current-path" class="text-cyan-400">~</span>#</span>
+                    <div class="relative flex-1 flex items-center">
+                        <input type="text" id="terminal-input" autofocus autocomplete="off" class="bg-transparent text-slate-100 flex-1 outline-none border-none focus:ring-0 font-medium placeholder-slate-700 font-mono text-[13px]" placeholder="Type a command... (Press 'Tab' for autocomplete)" />
+                        <!-- Autocomplete shadow preview -->
+                        <span id="autocomplete-suggestion" class="absolute left-0 pointer-events-none text-slate-600 select-none font-mono text-[13px] z-0"></span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 
-            closeSSHModal();
-            appendOutput(`Connecting to SSH proxy client [ssh://${user}@${host}:${port}]...`);
-            
-            // Simulating real SSH stream binding progress
-            setTimeout(() => {
-                appendOutput(`<span class="text-yellow-400">Performing secure Diffie-Hellman Key Exchange...</span>`);
-                setTimeout(() => {
-                    appendOutput(`<span class="text-yellow-400">Authenticating user credentials...</span>`);
-                    setTimeout(() => {
-                        // Switch session state to Active SSH Bridge
-                        isSSHActive = true;
-                        sshTargetServer = `${user}@${host}`;
-                        
-                        // Dynamically update CLI header state to highlight active tunnel
-                        terminalTitle.innerText = `${user}@${host} [Active Remote Session]`;
-                        networkBadge.innerText = "SECURE SSH TUNNEL (ONLINE)";
-                        networkBadge.className = "bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-bold";
-                        promptDecorator.innerHTML = `<span class="text-indigo-400 font-bold">${user}@${host}</span>:<span class="text-yellow-400">~</span>$`;
-                        
-                        appendOutput(`
-<span class="text-emerald-400 font-bold">✓ CONNECTION ESTABLISHED!</span>
-Welcome to ${host} (Ubuntu 24.04.1 LTS, Kernel 6.8.0)
-Type standard server tasks. Enter '<span class="text-rose-400 font-bold">exit</span>' or '<span class="text-rose-400 font-bold">disconnect</span>' to close the terminal session.
-                        `);
-                    }, 800);
-                }, 800);
-            }, 600);
-        }
+    <!-- Interactive SSH Connection Overlay Model -->
+    <div id="ssh-modal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all duration-300">
+        <div class="bg-[#0b0f19] border border-indigo-500/30 max-w-md w-full rounded-xl shadow-2xl p-6">
+            <h3 class="text-lg font-bold text-indigo-400 flex items-center gap-2 mb-1">
+                🔑 Secure SSH Shell Gateway
+            </h3>
+            <p class="text-xs text-slate-400 mb-5">Provide credentials to establish simulated target bridge.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Target Host Server</label>
+                    <input type="text" id="ssh-host" class="w-full bg-[#05070c] border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 transition font-mono" placeholder="e.g. 192.168.1.1 or webapp-prod.internal">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1 tracking-wide">SSH Username</label>
+                        <input type="text" id="ssh-user" class="w-full bg-[#05070c] border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 transition font-mono" placeholder="ubuntu / root">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Host Port</label>
+                        <input type="number" id="ssh-port" class="w-full bg-[#05070c] border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 transition font-mono" value="22">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Auth Strategy</label>
+                    <select id="ssh-auth" class="w-full bg-[#05070c] border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 transition" onchange="toggleSSHFields()">
+                        <option value="password">Interactive Password Check</option>
+                        <option value="key">OpenSSH Private Key Identification (.pem)</option>
+                    </select>
+                </div>
+                <div id="ssh-pass-wrapper">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Host Secret (Password)</label>
+                    <input type="password" id="ssh-password" class="w-full bg-[#05070c] border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500 transition font-mono" placeholder="••••••••">
+                </div>
+                <div id="ssh-key-wrapper" class="hidden">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Private Key Data</label>
+                    <textarea id="ssh-key" class="w-full bg-[#05070c] border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500 h-24 font-mono transition" placeholder="-----BEGIN RSA PRIVATE KEY-----"></textarea>
+                </div>
+                
+                <div class="flex gap-3 justify-end pt-3">
+                    <button onclick="closeSSHModal()" class="px-4 py-2 rounded-lg text-xs font-bold bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 transition">Discard</button>
+                    <button onclick="connectSSH()" class="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg shadow-indigo-600/20">Establish Bridge</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        function appendOutput(rawOutput) {
-            const logHTML = `
-                <div class="mt-4">
-                    <div class="text-slate-300 whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-indigo-900">${rawOutput}</div>
-                </div>`;
-            terminalHistory.innerHTML += logHTML;
-            terminalBody.scrollTop = terminalBody.scrollHeight;
-        }
+    <script>
+        const terminalHistory = document.getElementById('terminal-history');
+        const terminalInput = document.getElementById('terminal-input');
+        const autocompleteSuggestion = document.getElementById('autocomplete-suggestion');
+        const currentPathLabel = document.getElementById('current-path');
+        const terminalWorkspace = document.getElementById('terminal-workspace');
+        const sshModal = document.getElementById('ssh-modal');
+        const terminalTitle = document.getElementById('terminal-title');
+        const networkBadge = document.getElementById('network-badge');
+        const promptDecorator = document.getElementById('prompt-decorator');
+        const sidebarFiles = document.getElementById('sidebar-files');
+        const heroBanner = document.getElementById('hero-banner');
 
-        // Main command processor
-        function executeCommand(inputLine) {
-            const trimmed = inputLine.trim();
-            if (!trimmed) return;
+        // Nano Editor Elements
+        const nanoEditor = document.getElementById('nano-editor');
+        const nanoFilename = document.getElementById('nano-filename');
+        const nanoTextarea = document.getElementById('nano-textarea');
 
-            commandHistory.push(trimmed);
-            historyIndex = commandHistory.length;
+        // Virtual Directory System State
+        let currentPath = ["workspace"]; 
+        let commandHistory = [];
+        let historyIndex = -1;
+        let isSSHActive = false;
+        let sshTargetServer = "";
+        let currentActiveTheme = "default";
+        
+        // Active Sub-process Interrupter States
+        let runningProcessInterval = null;
+        let isInputLocked = false;
+        let activeEditorFilePath = null;
 
-            const args = trimmed.split(/\s+/);
-            const cmd = args[0].toLowerCase();
-            let output = "";
+        // Command Registry for Auto-Complete Suggestions
+        const commandsList = [
+            "help", "ls", "cd", "pwd", "cat", "touch", "nano", "mkdir", "rm", 
+            "tree", "htop", "neofetch", "download", "ssh", "ping", "curl", "clear", "theme"
+        ];
 
-            // If user is inside an active SSH session, pipe commands to the remote stream simulator
-            if (isSSHActive) {
-                if (cmd === 'exit' || cmd === 'disconnect') {
-                    isSSHActive = false;
-                    sshTargetServer = "";
-                    terminalTitle.innerText = "root@cloud-shell: ~/workspace";
-                    networkBadge.innerText = "LOCAL HYBRID ENGINE";
-                    networkBadge.className = "bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-bold";
-                    promptDecorator.innerHTML = `root@cloud-shell:<span id="current-path" class="text-cyan-400">~</span>#`;
-                    output = "SSH connection closed. Returned back to local sandbox engine.";
-                } else if (cmd === 'docker' || cmd === 'ansible') {
-                    // Commands run natively directly on the live server instantly!
-                    if (cmd === 'docker') {
-                        output = `[${sshTargetServer}] Running docker container check...\nCONTAINER ID   IMAGE          COMMAND       STATUS       PORTS\n7d1b32f1a9a8   postgres:16    "docker-..."  Up 12 hours  5432/tcp`;
-                    } else {
-                        output = `[${sshTargetServer}] Executing playbook scripts natively:\nPLAY [Setup Infrastructure] **************************\nok: [localhost]`;
-                    }
-                } else if (cmd === 'clear') {
-                    terminalHistory.innerHTML = "";
-                    return;
-                } else {
-                    output = `[${sshTargetServer}] Command successfully piped to remote shell:\n$ ${trimmed}\nResult: OK (Exit Code 0)`;
-                }
+        // Virtual File System Emulation State
+        const fileSystem = {
+            "workspace": {
+                type: "dir",
+                content: {
+                    "setup_guide.md": { 
+                        type: "file", 
+                        content: "# Enterprise Host Setup Guide\n\nThis is an emulated environment running with persistent RAM filesystem. Use terminal utilities to build out structures.\n\n### Available Commands:\n- `ls` / `cd` / `tree` : Traversal\n- `nano [file]` : Run full visual editor inside terminal\n- `ping [ip]` / `curl [url]` : Simulated Network Utility\n- `bash test_script.sh` : Process automation script runner\n- `theme [ocean/dracula/matrix/cyberpunk]` : Modify design style." 
+                    },
+                    "ansible_playbook.yml": { 
+                        type: "file", 
+                        content: "---\n- name: Deploy Cluster Node\n  hosts: simulated-nodes\n  become: yes\n  tasks:\n    - name: install docker dependencies\n      apt:\n        name: apt-transport-https\n        state: present" 
+                    },
+                    "test_script.sh": {
+                        type: "file",
+                        content: "#!/bin/bash\necho 'Compiling security kernels...'\nsleep 1\necho '[+] Base architecture loaded successfully'\nsleep 1\necho '[+] Configuring ingress load balancer'\nsleep 1\necho 'Done! Automation completed.'"
+                    }
+                }
+            },
+            "etc": {
+                type: "dir",
+                content: {
+                    "hosts": { type: "file", content: "127.0.0.1 localhost\n192.168.1.1 router.internal\n10.0.0.4 database.prod" },
+                    "resolv.conf": { type: "file", content: "nameserver 8.8.8.8\nnameserver 1.1.1.1" }
+                }
+            }
+        };
 
-                // Render output for Remote Shell Stream
-                const logHTML = `
-                    <div class="mt-4">
-                        <div class="font-bold text-slate-400"><span class="text-indigo-400">${sshTargetServer}</span>:<span class="text-yellow-400">~</span>$ ${inputLine}</div>
-                        <div class="text-slate-300 whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-indigo-800">${output}</div>
-                    </div>`;
-                terminalHistory.innerHTML += logHTML;
-                terminalBody.scrollTop = terminalBody.scrollHeight;
-                return;
-            }
+        // Initialize Virtual File Explorer Tree inside sidebar
+        function refreshFileExplorer() {
+            sidebarFiles.innerHTML = "";
+            
+            Object.keys(fileSystem).forEach(dirName => {
+                const folderDiv = document.createElement('div');
+                folderDiv.className = "flex flex-col select-none mb-2";
+                folderDiv.innerHTML = `
+                    <div class="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-900/40 cursor-pointer text-cyan-400 font-semibold" onclick="cdToFolder('${dirName}')">
+                        <span>📁</span> <span class="font-mono">${dirName}/</span>
+                    </div>
+                `;
+                
+                // Add children elements underneath folder
+                const childWrapper = document.createElement('div');
+                childWrapper.className = "pl-6 space-y-1.5 mt-1 border-l border-slate-800 ml-4";
+                
+                const dirContent = fileSystem[dirName].content;
+                Object.keys(dirContent).forEach(fileName => {
+                    const fileDiv = document.createElement('div');
+                    fileDiv.className = "flex items-center gap-2 px-2 py-0.5 rounded hover:bg-slate-900/60 cursor-pointer text-slate-400 hover:text-slate-200 transition";
+                    fileDiv.onclick = () => {
+                        terminalInput.value = `cat ${dirName}/${fileName}`;
+                        terminalInput.focus();
+                        handleAutocomplete();
+                    };
+                    fileDiv.innerHTML = `<span>📄</span> <span class="font-mono text-[11px] truncate w-36 block">${fileName}</span>`;
+                    childWrapper.appendChild(fileDiv);
+                });
+                
+                folderDiv.appendChild(childWrapper);
+                sidebarFiles.appendChild(folderDiv);
+            });
+        }
 
-            // Local command structure (Standard Workspace Engine)
-            function getActiveDir() {
-                let dir = fileSystem;
-                for (let part of currentPath) {
-                    if (dir[part] && dir[part].type === "dir") {
-                        dir = dir[part].content;
-                    } else {
-                        return null;
-                    }
-                }
-                return dir;
-            }
+        function cdToFolder(dirName) {
+            if (isInputLocked) return;
+            currentPath = [dirName];
+            const pathText = "/" + currentPath.join("/");
+            currentPathLabel.innerText = pathText;
+            appendOutput(`Switched active directory to ${pathText}`, "cyan-400");
+        }
 
-            const activeDir = getActiveDir();
+        // Custom Notification Banner System
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `p-3 rounded-lg shadow-xl text-xs font-bold font-mono transition-all duration-300 translate-y-2 opacity-0 select-none ${
+                type === 'success' ? 'bg-emerald-950/90 text-emerald-400 border border-emerald-500/30' :
+                type === 'error' ? 'bg-rose-950/90 text-rose-400 border border-rose-500/30' :
+                'bg-slate-900/95 text-slate-200 border border-slate-800'
+            }`;
+            toast.innerText = message;
+            container.appendChild(toast);
 
-            switch (cmd) {
-                case 'help':
-                    output = `
-<span class="text-indigo-400 font-bold">Standard Tools:</span>
-  ls           - List files
-  cd [dir]     - Change directory
-  pwd          - Show current path
-  cat [file]   - View file content
-  touch [file] - Create/modify files
-  mkdir [dir]  - Create folders
-  rm [item]    - Delete file or folder
-  download [file] - Download virtual file to local PC
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
 
-<span class="text-cyan-400 font-bold">Live Remote SSH Server Control:</span>
-  ssh user@host  - Open SSH connection panel to dial and remote-control any live machine!
-  clear          - Clear terminal interface
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => { toast.remove(); }, 300);
+            }, 3000);
+        }
+
+        // Switching Application Themes
+        function switchTheme(theme) {
+            document.body.className = "text-slate-200 h-screen w-screen overflow-hidden flex flex-col p-2 sm:p-4 md:p-5 select-none";
+            if (theme !== "default") {
+                document.body.classList.add(`theme-${theme}`);
+            }
+            currentActiveTheme = theme;
+            document.getElementById('theme-menu-select').value = theme;
+            showToast(`Applied theme profile: ${theme.toUpperCase()}`, "success");
+        }
+
+        function toggleCRTMode() {
+            const visualMain = document.getElementById('terminal-workspace');
+            visualMain.classList.toggle('scanlines');
+            visualMain.classList.toggle('crt-flicker-active');
+            showToast("CRT visual filtering mode updated!");
+        }
+
+        function toggleSSHFields() {
+            const method = document.getElementById('ssh-auth').value;
+            if (method === 'password') {
+                document.getElementById('ssh-pass-wrapper').classList.remove('hidden');
+                document.getElementById('ssh-key-wrapper').classList.add('hidden');
+            } else {
+                document.getElementById('ssh-pass-wrapper').classList.add('hidden');
+                document.getElementById('ssh-key-wrapper').classList.remove('hidden');
+            }
+        }
+
+        function closeSSHModal() {
+            sshModal.classList.add('hidden');
+            terminalInput.focus();
+        }
+
+        function openSSHModal(prefillUser = '', prefillHost = '') {
+            if (prefillUser) document.getElementById('ssh-user').value = prefillUser;
+            if (prefillHost) document.getElementById('ssh-host').value = prefillHost;
+            sshModal.classList.remove('hidden');
+        }
+
+        function executeQuick(command) {
+            if (isInputLocked) return;
+            terminalInput.value = command;
+            executeCommand(command);
+        }
+
+        function focusAndInsert(cmd) {
+            if (isInputLocked) return;
+            terminalInput.value = cmd;
+            terminalInput.focus();
+            handleAutocomplete();
+        }
+
+        function quickConnect(user, host) {
+            if (isInputLocked) return;
+            openSSHModal(user, host);
+        }
+
+        // Autocomplete Algorithm matching commands & parameters
+        function handleAutocomplete() {
+            const query = terminalInput.value;
+            if (!query) {
+                autocompleteSuggestion.innerText = "";
+                return;
+            }
+
+            const args = query.split(/\s+/);
+            const partial = args[args.length - 1];
+
+            // If resolving first argument (Command match)
+            if (args.length === 1) {
+                const match = commandsList.find(c => c.startsWith(query.toLowerCase()));
+                if (match && match !== query) {
+                    autocompleteSuggestion.innerText = query + match.substring(query.length);
+                } else {
+                    autocompleteSuggestion.innerText = "";
+                }
+            } else {
+                // Resolving parameters matching files/directories
+                const currentDirContent = getActiveDir();
+                const items = currentDirContent ? Object.keys(currentDirContent) : [];
+                const match = items.find(i => i.startsWith(partial));
+                if (match && match !== partial) {
+                    const baseQuery = query.substring(0, query.length - partial.length);
+                    autocompleteSuggestion.innerText = baseQuery + match;
+                } else {
+                    autocompleteSuggestion.innerText = "";
+                }
+            }
+        }
+
+        // Perform tab auto-fill completion
+        function completeInputWithTab() {
+            if (autocompleteSuggestion.innerText) {
+                terminalInput.value = autocompleteSuggestion.innerText;
+                autocompleteSuggestion.innerText = "";
+            }
+        }
+
+        // Persistent file system access helper
+        function getActiveDir() {
+            let dir = fileSystem;
+            for (let part of currentPath) {
+                if (dir[part] && dir[part].type === "dir") {
+                    dir = dir[part].content;
+                } else {
+                    return null;
+                }
+            }
+            return dir;
+        }
+
+        // Nano visual editor interface lifecycle
+        function openNanoEditor(filename) {
+            if (!filename) {
+                appendOutput("nano: No target filename supplied.", "rose-500");
+                return;
+            }
+
+            const activeDir = getActiveDir();
+            if (!activeDir) return;
+
+            let existingContent = "";
+            if (activeDir[filename]) {
+                if (activeDir[filename].type === "file") {
+                    existingContent = activeDir[filename].content;
+                } else {
+                    appendOutput(`nano: Cannot edit directory ${filename}`, "rose-500");
+                    return;
+                }
+            }
+
+            activeEditorFilePath = filename;
+            nanoFilename.innerText = filename;
+            nanoTextarea.value = existingContent;
+            
+            // Render visual editor and disable terminal input
+            nanoEditor.classList.remove('hidden');
+            isInputLocked = true;
+            nanoTextarea.focus();
+        }
+
+        function saveNanoContent() {
+            if (!activeEditorFilePath) return;
+            const activeDir = getActiveDir();
+            if (activeDir) {
+                activeDir[activeEditorFilePath] = {
+                    type: "file",
+                    content: nanoTextarea.value
+                };
+                refreshFileExplorer();
+                showToast(`File '${activeEditorFilePath}' saved to RAMFS`, "success");
+            }
+        }
+
+        function closeNanoEditor() {
+            nanoEditor.classList.add('hidden');
+            isInputLocked = false;
+            activeEditorFilePath = null;
+            terminalInput.focus();
+            appendOutput("Closed nano visual workspace.", "slate-400");
+        }
+
+        // SSH Virtual Gateway tunnel simulation
+        function connectSSH() {
+            const host = document.getElementById('ssh-host').value;
+            const user = document.getElementById('ssh-user').value;
+            const port = document.getElementById('ssh-port').value;
+            
+            if(!host || !user) {
+                showToast("Host and Username cannot be empty!", "error");
+                return;
+            }
+
+            closeSSHModal();
+            appendOutput(`Connecting to virtual Cloud SSH Broker [ssh://${user}@${host}:${port}]...`, "slate-400");
+            isInputLocked = true;
+
+            setTimeout(() => {
+                appendOutput(`<span class="text-amber-500 font-semibold">[Gate-Handshake] Exchanging SHA-256 crypt keys...</span>`);
+                setTimeout(() => {
+                    appendOutput(`<span class="text-amber-500 font-semibold">[Authorization] Verifying credentials parameters...</span>`);
+                    setTimeout(() => {
+                        isInputLocked = false;
+                        isSSHActive = true;
+                        sshTargetServer = `${user}@${host}`;
+                        
+                        // Mutate GUI Headers dynamically
+                        terminalTitle.innerText = `${user}@${host} (Remote SSH Console)`;
+                        networkBadge.innerText = "SECURE TUNNEL (CONNECTED)";
+                        networkBadge.className = "bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-bold border border-indigo-500/20 font-mono";
+                        promptDecorator.innerHTML = `<span class="text-indigo-400 font-bold">${user}@${host}</span>:<span class="text-yellow-400">~</span>$`;
+                        
+                        appendOutput(`
+<span class="text-emerald-400 font-bold">✓ SSH ENCRYPTED LINK ESTABLISHED!</span>
+Target Environment Profile: Ubuntu v22.04 LTS Kernel
+Type remote shell commands. Enter '<span class="text-rose-400 font-bold">exit</span>' or '<span class="text-rose-400 font-bold">disconnect</span>' to release the tunnel.
+                        `);
+                        showToast(`Tunnel secured to ${host}`, "success");
+                    }, 800);
+                }, 800);
+            }, 600);
+        }
+
+        function appendOutput(rawOutput, colorClass = "slate-300") {
+            const containerDiv = document.createElement('div');
+            containerDiv.className = "mt-3";
+            containerDiv.innerHTML = `
+                <div class="text-${colorClass} whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-indigo-950 font-mono text-[13px]">${rawOutput}</div>
+            `;
+            terminalHistory.appendChild(containerDiv);
+            terminalHistory.scrollTop = terminalHistory.scrollHeight;
+        }
+
+        // Automated script and command sequence execution simulation (slow stream)
+        function runSimulatedScript(scriptCode, filename) {
+            isInputLocked = true;
+            appendOutput(`[+] Launching local script execution: ${filename}`, "cyan-400");
+            
+            const lines = scriptCode.split('\n');
+            let index = 0;
+
+            runningProcessInterval = setInterval(() => {
+                if (index < lines.length) {
+                    const line = lines[index].trim();
+                    if (line && !line.startsWith('#')) {
+                        if (line.startsWith('sleep')) {
+                            // Virtual delay
+                        } else if (line.startsWith('echo')) {
+                            const match = line.match(/'([^']+)'/);
+                            if (match) appendOutput(match[1], "slate-300");
+                        } else {
+                            appendOutput(line, "slate-400");
+                        }
+                    }
+                    index++;
+                } else {
+                    clearInterval(runningProcessInterval);
+                    runningProcessInterval = null;
+                    isInputLocked = false;
+                    appendOutput("[✓] Run lifecycle terminated successfully. Exit code: 0", "emerald-400");
+                    terminalInput.focus();
+                }
+            }, 600);
+        }
+
+        // Network utility: ping simulation
+        function runPingCommand(host) {
+            if (!host) {
+                appendOutput("ping: missing target host parameter. e.g., 'ping 8.8.8.8'", "rose-400");
+                return;
+            }
+
+            isInputLocked = true;
+            appendOutput(`PING ${host} (192.168.1.${Math.floor(Math.random() * 254)}) 56(84) bytes of data.`, "slate-400");
+            
+            let count = 0;
+            runningProcessInterval = setInterval(() => {
+                if (count < 6) {
+                    const latency = (Math.random() * 45 + 5).toFixed(1);
+                    appendOutput(`64 bytes from ${host}: icmp_seq=${count + 1} ttl=64 time=${latency} ms`, "slate-300");
+                    count++;
+                } else {
+                    clearInterval(runningProcessInterval);
+                    runningProcessInterval = null;
+                    isInputLocked = false;
+                    appendOutput(`\n--- ${host} ping statistics ---`, "slate-400");
+                    appendOutput(`6 packets transmitted, 6 received, 0% packet loss, time 5012ms`, "emerald-400");
+                    terminalInput.focus();
+                }
+            }, 800);
+        }
+
+        // Network utility: curl simulation
+        function runCurlCommand(url) {
+            if (!url) {
+                appendOutput("curl: missing destination url. e.g., 'curl api.github.com'", "rose-400");
+                return;
+            }
+
+            isInputLocked = true;
+            appendOutput(`% Total    % Received % Xferd  Average Speed   Time    Time     Time  Current`, "slate-500");
+            appendOutput(`                                 Dload  Upload   Total   Spent    Left  Speed`, "slate-500");
+            appendOutput(`100  384  100   384    0     0   1536      0 --:--:-- --:--:-- --:--:--  1536`, "slate-400");
+
+            setTimeout(() => {
+                const randomIP = `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+                const responseObj = {
+                    status: "success",
+                    endpoint: url,
+                    simulated_ip: randomIP,
+                    timestamp: new Date().toISOString(),
+                    payload: {
+                        active_connections: Math.floor(Math.random() * 1000) + 150,
+                        load_balancer: "HAProxy/v2.6.2-enterprise",
+                        node_healthy: true
+                    },
+                    environment: "cloud_sandbox_v3"
+                };
+                
+                appendOutput(JSON.stringify(responseObj, null, 2), "emerald-400");
+                isInputLocked = false;
+                terminalInput.focus();
+            }, 1000);
+        }
+
+        // Interrupt active loop processes cleanly
+        function triggerProcessInterrupt() {
+            if (runningProcessInterval) {
+                clearInterval(runningProcessInterval);
+                runningProcessInterval = null;
+                isInputLocked = false;
+                appendOutput("^C\nProcess aborted by shell interface.", "rose-400");
+                terminalInput.focus();
+                showToast("Process Terminated", "info");
+            }
+        }
+
+        // Active terminal command execution router
+        function executeCommand(inputLine) {
+            const trimmed = inputLine.trim();
+            if (!trimmed) return;
+
+            commandHistory.push(trimmed);
+            historyIndex = commandHistory.length;
+            autocompleteSuggestion.innerText = "";
+
+            const args = trimmed.split(/\s+/);
+            const cmd = args[0].toLowerCase();
+            let output = "";
+
+            // If system is currently running inside an active SSH tunnel
+            if (isSSHActive) {
+                if (cmd === 'exit' || cmd === 'disconnect') {
+                    isSSHActive = false;
+                    sshTargetServer = "";
+                    terminalTitle.innerText = "root@cloud-shell: ~/workspace";
+                    networkBadge.innerText = "LOCAL ENGINE";
+                    networkBadge.className = "bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-500/20 font-mono";
+                    promptDecorator.innerHTML = `root@cloud-shell:<span id="current-path" class="text-cyan-400">~</span>#`;
+                    output = "Remote SSH Tunnel decommissioned successfully. Restored default workspace container.";
+                    showToast("SSH Tunnel Closed", "info");
+                } else if (cmd === 'htop') {
+                    runInteractiveHtop();
+                    return;
+                } else if (cmd === 'ping') {
+                    runPingCommand(args[1]);
+                    return;
+                } else if (cmd === 'clear') {
+                    terminalHistory.innerHTML = "";
+                    return;
+                } else {
+                    output = `[${sshTargetServer}] Execution status completed successfully.\nResponse Payload: Virtual endpoint processed operation. (Exit Code 0)`;
+                }
+
+                // Render remote feedback logs
+                const logHTML = `
+                    <div class="mt-4 font-mono text-xs sm:text-sm">
+                        <div class="font-bold text-slate-400"><span class="text-indigo-400">${sshTargetServer}</span>:<span class="text-yellow-400">~</span>$ ${inputLine}</div>
+                        <div class="text-slate-300 whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-indigo-900">${output}</div>
+                    </div>`;
+                
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = logHTML;
+                terminalHistory.appendChild(wrapper);
+                terminalHistory.scrollTop = terminalHistory.scrollHeight;
+                return;
+            }
+
+            // Normal local command processing
+            const activeDir = getActiveDir();
+
+            switch (cmd) {
+                case 'help':
+                    output = `
+<span class="text-indigo-400 font-bold">🛠 Available Utility Programs:</span>
+  ls               - List emulated directory structures
+  cd [dir]         - Change workspace directory path
+  pwd              - Print active directory path
+  cat [file]       - Dump target file contents to terminal
+  touch [file]     - Instantiate new blank file asset
+  mkdir [dir]      - Create custom directories 
+  nano [file]      - Launch persistent full-screen text editor
+  rm [item]        - Delete file or directory from RAMFS
+  tree             - Plot out structured layout tree of directories
+  htop             - Launch beautiful simulated CPU & process monitor
+  neofetch         - Print core environment details & logo
+  download [file]  - Export and download file content to disk
+  theme [style]    - Switch shell interface themes (ocean, dracula, matrix, cyberpunk, default)
+
+<span class="text-cyan-400 font-bold">🌐 Connected Telemetry Protocols:</span>
+  ping [ip/host]   - Fire network latency diagnostics checks
+  curl [endpoint]  - Extract emulated cloud API payload requests
+  ssh [user@ip]    - Secure remote bridge connection panel
+  clear            - Wipe active terminal console history
 `;
-                    break;
+                    break;
 
-                case 'ssh':
-                    const sshArg = args[1];
-                    let prefillUser = '';
-                    let prefillHost = '';
-                    if (sshArg && sshArg.includes('@')) {
-                        const parts = sshArg.split('@');
-                        prefillUser = parts[0];
-                        prefillHost = parts[1];
-                    }
-                    openSSHModal(prefillUser, prefillHost);
-                    return; // exit function as modal takes over user prompt control
+                case 'theme':
+                    const chosenTheme = args[1];
+                    if (!chosenTheme) {
+                        output = `Current Theme: <span class="text-indigo-400 font-bold">${currentActiveTheme}</span>\nAvailable Profiles: <span class="text-slate-400">default, dracula, matrix, cyberpunk, ocean</span>\nUse syntax: 'theme [style]'`;
+                    } else if (["default", "dracula", "matrix", "cyberpunk", "ocean"].includes(chosenTheme.toLowerCase())) {
+                        switchTheme(chosenTheme.toLowerCase());
+                        return;
+                    } else {
+                        output = `Unknown theme style profile: '${chosenTheme}'. Options: default, dracula, matrix, cyberpunk, ocean`;
+                    }
+                    break;
 
-                case 'ls':
-                    if (activeDir) {
-                        const items = Object.keys(activeDir);
-                        output = items.length === 0 ? "<span class='text-slate-500'>[Empty]</span>" : items.map(key => {
-                            return activeDir[key].type === "dir" ? `<span class="text-cyan-400 font-bold">${key}/</span>` : `<span class="text-slate-200">${key}</span>`;
-                        }).join("    ");
-                    } else {
-                        output = "Error: Virtual path lost.";
-                    }
-                    break;
+                case 'bash':
+                case 'sh':
+                    const runTarget = args[1];
+                    if (!runTarget) {
+                        output = "Syntax Error: Supply a script parameter. e.g., 'bash test_script.sh'";
+                    } else if (activeDir && activeDir[runTarget] && activeDir[runTarget].type === "file") {
+                        runSimulatedScript(activeDir[runTarget].content, runTarget);
+                        return;
+                    } else {
+                        output = `bash: script path not located: ${runTarget}`;
+                    }
+                    break;
 
-                case 'pwd':
-                    output = "/" + currentPath.join("/");
-                    break;
+                case 'ssh':
+                    const sshArg = args[1];
+                    let prefillUser = '';
+                    let prefillHost = '';
+                    if (sshArg && sshArg.includes('@')) {
+                        const parts = sshArg.split('@');
+                        prefillUser = parts[0];
+                        prefillHost = parts[1];
+                    }
+                    openSSHModal(prefillUser, prefillHost);
+                    return;
 
-                case 'cd':
-                    const targetDir = args[1];
-                    if (!targetDir || targetDir === "~") {
-                        currentPath = ["workspace"];
-                    } else if (targetDir === "..") {
-                        if (currentPath.length > 1) currentPath.pop();
-                    } else {
-                        if (activeDir && activeDir[targetDir] && activeDir[targetDir].type === "dir") {
-                            currentPath.push(targetDir);
-                        } else {
-                            output = `bash: cd: ${targetDir}: No such directory`;
-                        }
-                    }
-                    break;
+                case 'ping':
+                    runPingCommand(args[1]);
+                    return;
 
-                case 'cat':
-                    const fileTarget = args[1];
-                    if (!fileTarget) {
-                        output = "Usage: cat [filename]";
-                    } else if (activeDir && activeDir[fileTarget]) {
-                        output = activeDir[fileTarget].type === "file" ? activeDir[fileTarget].content : `cat: ${fileTarget}: Is a directory`;
-                    } else {
-                        output = `cat: ${fileTarget}: No such file`;
-                    }
-                    break;
+                case 'curl':
+                    runCurlCommand(args[1]);
+                    return;
 
-                case 'touch':
-                    const newFile = args[1];
-                    if (!newFile) {
-                        output = "Usage: touch [filename] [optional: content]";
-                    } else if (activeDir) {
-                        const fileContent = args.slice(2).join(" ") || "# Auto-generated sandbox file";
-                        activeDir[newFile] = { type: "file", content: fileContent };
-                        output = `File '${newFile}' updated successfully.`;
-                    }
-                    break;
+                case 'nano':
+                    openNanoEditor(args[1]);
+                    return;
 
-                case 'mkdir':
-                    const newDir = args[1];
-                    if (!newDir) {
-                        output = "Usage: mkdir [directory_name]";
-                    } else if (activeDir) {
-                        if (activeDir[newDir]) {
-                            output = `mkdir: cannot create directory '${newDir}': File exists`;
-                        } else {
-                            activeDir[newDir] = { type: "dir", content: {} };
-                            output = `Created directory: ${newDir}/`;
-                        }
-                    }
-                    break;
+                case 'neofetch':
+                    // Map Neofetch theme logo colors
+                    let primaryLogoColor = "text-indigo-400";
+                    if (currentActiveTheme === "matrix") primaryLogoColor = "text-green-500";
+                    if (currentActiveTheme === "cyberpunk") primaryLogoColor = "text-pink-500";
+                    if (currentActiveTheme === "ocean") primaryLogoColor = "text-sky-500";
+                    
+                    output = `
+<span class="${primaryLogoColor} font-bold">      //\\\\   </span>  <span class="text-slate-200 font-bold">root@cloud-shell</span>
+<span class="${primaryLogoColor} font-bold">     //  \\\\  </span>  ----------------
+<span class="${primaryLogoColor} font-bold">    //    \\\\ </span>  <span class="text-indigo-300">OS</span>: Enterprise WebKernel Simulator v3.1
+<span class="${primaryLogoColor} font-bold">   //======\\\\</span>  <span class="text-indigo-300">Kernel</span>: Sandbox Engine (V8/WASM)
+<span class="${primaryLogoColor} font-bold">  //        \\\\</span> <span class="text-indigo-300">Uptime</span>: 2 hours, 18 mins
+<span class="text-indigo-300">               Shell</span>: WebBash v5.2-interactive
+<span class="text-indigo-300">               Terminal</span>: xterm-optimized shadow container
+<span class="text-indigo-300">               Theme Style</span>: ${currentActiveTheme.toUpperCase()}
+<span class="text-indigo-300">               RAMFS Allocation</span>: 1024 MB Static RAM Allocation
+`;
+                    break;
 
-                case 'rm':
-                    const delTarget = args[1];
-                    if (!delTarget) {
-                        output = "Usage: rm [filename/foldername]";
-                    } else if (activeDir && activeDir[delTarget]) {
-                        delete activeDir[delTarget];
-                        output = `Deleted: ${delTarget}`;
-                    } else {
-                        output = `rm: cannot remove '${delTarget}': No such file or directory`;
-                    }
-                    break;
+                case 'htop':
+                    runInteractiveHtop();
+                    return;
 
-                case 'download':
-                    const downTarget = args[1];
-                    if (!downTarget) {
-                        output = "Usage: download [filename] (e.g. download setup_guide.md)";
-                    } else if (activeDir && activeDir[downTarget] && activeDir[downTarget].type === "file") {
-                        const content = activeDir[downTarget].content;
-                        const blob = new Blob([content], { type: "text/plain" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = downTarget;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                        output = `<span class="text-emerald-400 font-bold">✓ Download initiated: ${downTarget}</span>`;
-                    } else {
-                        output = `download: '${downTarget}' not found or is a directory.`;
-                    }
-                    break;
+                case 'tree':
+                    if (activeDir) {
+                        output = `<span class="text-indigo-400 font-bold">.</span>\n`;
+                        const rootDirs = Object.keys(fileSystem);
+                        rootDirs.forEach((rDir, i) => {
+                            const isLastRoot = i === rootDirs.length - 1;
+                            output += `${isLastRoot ? '└──' : '├──'} <span class="text-cyan-400 font-bold">${rDir}/</span>\n`;
+                            const contents = Object.keys(fileSystem[rDir].content);
+                            contents.forEach((childFile, j) => {
+                                const isLastChild = j === contents.length - 1;
+                                output += `│   ${isLastChild ? '└──' : '├──'} ${childFile}\n`;
+                            });
+                        });
+                    } else {
+                        output = "Directory schema lost.";
+                    }
+                    break;
 
-                case 'clear':
-                    terminalHistory.innerHTML = "";
-                    return;
+                case 'ls':
+                    if (activeDir) {
+                        const items = Object.keys(activeDir);
+                        output = items.length === 0 ? "<span class='text-slate-600'>[Empty Directory]</span>" : items.map(key => {
+                            return activeDir[key].type === "dir" ? `<span class="text-cyan-400 font-bold">${key}/</span>` : `<span class="text-slate-200">${key}</span>`;
+                        }).join("    ");
+                    } else {
+                        output = "Access forbidden.";
+                    }
+                    break;
 
-                default:
-                    output = `bash: command not found: ${cmd}. For SSH connecting, type: <span class="text-indigo-400 font-bold">ssh user@host</span>`;
-            }
+                case 'pwd':
+                    output = "/" + currentPath.join("/");
+                    break;
 
-            // Render output for Local Engine
-            const pathText = currentPath.length === 1 && currentPath[0] === "workspace" ? "~" : "/" + currentPath.join("/");
-            const logHTML = `
-                <div class="mt-4">
-                    <div class="font-bold text-slate-400"><span class="text-emerald-500">root@cloud-shell:</span><span class="text-cyan-400">${pathText}</span># ${inputLine}</div>
-                    <div class="text-slate-300 whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-slate-800">${output}</div>
-                </div>`;
-            terminalHistory.innerHTML += logHTML;
+                case 'cd':
+                    const targetDir = args[1];
+                    if (!targetDir || targetDir === "~") {
+                        currentPath = ["workspace"];
+                    } else if (targetDir === "..") {
+                        if (currentPath.length > 1) currentPath.pop();
+                    } else {
+                        if (activeDir && activeDir[targetDir] && activeDir[targetDir].type === "dir") {
+                            currentPath.push(targetDir);
+                        } else {
+                            output = `cd: target path not found: ${targetDir}`;
+                        }
+                    }
+                    break;
 
-            currentPathLabel.innerText = pathText;
-            setTimeout(() => {
-                terminalBody.scrollTop = terminalBody.scrollHeight;
-            }, 50);
-        }
+                case 'cat':
+                    const fileTarget = args[1];
+                    if (!fileTarget) {
+                        output = "Syntax mismatch: cat [filename]";
+                    } else if (activeDir && activeDir[fileTarget]) {
+                        output = activeDir[fileTarget].type === "file" ? activeDir[fileTarget].content : `cat: ${fileTarget} is a folder directory path`;
+                    } else {
+                        output = `cat: target node '${fileTarget}' not found.`;
+                    }
+                    break;
 
-        // Key listeners
-        terminalInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const commandText = terminalInput.value;
-                terminalInput.value = '';
-                executeCommand(commandText);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (historyIndex > 0) {
-                    historyIndex--;
-                    terminalInput.value = commandHistory[historyIndex];
-                }
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (historyIndex < commandHistory.length - 1) {
-                    historyIndex++;
-                    terminalInput.value = commandHistory[historyIndex];
-                } else {
-                    historyIndex = commandHistory.length;
-                    terminalInput.value = '';
-                }
-            }
-        });
+                case 'touch':
+                    const newFile = args[1];
+                    if (!newFile) {
+                        output = "Syntax mismatch: touch [filename]";
+                    } else if (activeDir) {
+                        const fileContent = args.slice(2).join(" ") || "# Initialized workspace file schema";
+                        activeDir[newFile] = { type: "file", content: fileContent };
+                        output = `✓ Successfully generated document context node: '${newFile}'`;
+                        refreshFileExplorer();
+                    }
+                    break;
 
-        terminalBody.addEventListener('click', () => {
-            terminalInput.focus();
-        });
-    </script>
+                case 'mkdir':
+                    const newDir = args[1];
+                    if (!newDir) {
+                        output = "Syntax mismatch: mkdir [folder_name]";
+                    } else if (activeDir) {
+                        if (activeDir[newDir]) {
+                            output = `mkdir Error: Destination name occupied.`;
+                        } else {
+                            activeDir[newDir] = { type: "dir", content: {} };
+                            output = `✓ Successfully generated subfolder node: ${newDir}/`;
+                            refreshFileExplorer();
+                        }
+                    }
+                    break;
+
+                case 'rm':
+                    const delTarget = args[1];
+                    if (!delTarget) {
+                        output = "Syntax mismatch: rm [filename/folder]";
+                    } else if (activeDir && activeDir[delTarget]) {
+                        delete activeDir[delTarget];
+                        output = `✓ Successfully removed filesystem node: ${delTarget}`;
+                        refreshFileExplorer();
+                    } else {
+                        output = `rm error: matching files target not found: '${delTarget}'`;
+                    }
+                    break;
+
+                case 'download':
+                    const downTarget = args[1];
+                    if (!downTarget) {
+                        output = "Syntax mismatch: download [filename]";
+                    } else if (activeDir && activeDir[downTarget] && activeDir[downTarget].type === "file") {
+                        const content = activeDir[downTarget].content;
+                        const blob = new Blob([content], { type: "text/plain" });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = downTarget;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                        output = `<span class="text-emerald-400 font-bold">✓ Workspace export download initiated: ${downTarget}</span>`;
+                        showToast(`Downloaded: ${downTarget}`, "success");
+                    } else {
+                        output = `download target mismatch: '${downTarget}' not matching file properties.`;
+                    }
+                    break;
+
+                case 'clear':
+                    terminalHistory.innerHTML = "";
+                    return;
+
+                default:
+                    output = `bash: command unrecognized: '${cmd}'. Need remote bridge dial? Enter: <span class="text-indigo-400 font-bold hover:underline">ssh user@host</span>`;
+            }
+
+            // Render Output logs onto Console History
+            const pathText = currentPath.length === 1 && currentPath[0] === "workspace" ? "~" : "/" + currentPath.join("/");
+            const logHTML = `
+                <div class="mt-4 font-mono text-xs sm:text-sm">
+                    <div class="font-bold text-slate-400"><span class="text-emerald-500">root@cloud-shell:</span><span class="text-cyan-400">${pathText}</span># ${inputLine}</div>
+                    <div class="text-slate-300 whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-slate-800">${output}</div>
+                </div>`;
+            
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = logHTML;
+            terminalHistory.appendChild(wrapper);
+
+            currentPathLabel.innerText = pathText;
+            
+            setTimeout(() => {
+                terminalHistory.scrollTop = terminalHistory.scrollHeight;
+            }, 50);
+        }
+
+        // Run Simulated Interactive htop utility inside the stream window
+        function runInteractiveHtop() {
+            isInputLocked = true;
+            
+            const htopContainer = document.createElement('div');
+            htopContainer.className = "p-4 bg-slate-950 border border-emerald-500/30 rounded-lg text-xs font-mono space-y-3 mt-4";
+            terminalHistory.appendChild(htopContainer);
+
+            let cycles = 0;
+            runningProcessInterval = setInterval(() => {
+                const cpuValue = Math.floor(Math.random() * 45) + 15;
+                const ramValue = Math.floor(Math.random() * 10) + 240;
+                
+                const cpuBar = "█".repeat(Math.floor(cpuValue / 5)) + "░".repeat(20 - Math.floor(cpuValue / 5));
+                const ramBar = "█".repeat(Math.floor(ramValue / 25)) + "░".repeat(20 - Math.floor(ramValue / 25));
+
+                htopContainer.innerHTML = `
+                    <div class="flex justify-between text-slate-400 border-b border-slate-800 pb-1.5 font-bold select-none">
+                        <span>📊 WEB CONSOLE HTOP PROCESS TELEMETRY</span>
+                        <span class="text-emerald-400 animate-pulse">● ACTIVE STREAM</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-300">
+                        <div>CPU [${cpuBar}] ${cpuValue}%</div>
+                        <div>RAM [${ramBar}] ${ramValue}MB / 1024MB</div>
+                    </div>
+                    <div class="pt-2 text-[11px] text-slate-500 select-none">
+                        PID   USER     PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+                        3491  root     20   0  314424  12410   4910 R   2.4   2.8   0:04.12 micro_nginx
+                        4810  ubuntu   20   0  210984   8410   2910 S   1.2   1.8   0:01.82 telemetry_collector
+                        9102  root     20   0   12410   4102   1204 S   0.0   0.4   0:00.04 shadow_daemon
+                    </div>
+                    <div class="text-[10px] text-slate-500 text-right pt-2 select-none">Time slice ${cycles}/10. Press (Ctrl+C) to terminate.</div>
+                `;
+                
+                cycles++;
+                terminalHistory.scrollTop = terminalHistory.scrollHeight;
+
+                if (cycles > 10) {
+                    clearInterval(runningProcessInterval);
+                    runningProcessInterval = null;
+                    htopContainer.innerHTML += `<div class="text-emerald-400 font-bold pt-2 border-t border-slate-900/60">HTOP snapshot trace session completed. Console freed.</div>`;
+                    isInputLocked = false;
+                    terminalInput.focus();
+                    terminalHistory.scrollTop = terminalHistory.scrollHeight;
+                }
+            }, 1000);
+        }
+
+        // Handle general terminal input keyboard events
+        terminalInput.addEventListener('keydown', (e) => {
+            if (isInputLocked) {
+                e.preventDefault();
+                return;
+            }
+
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                completeInputWithTab();
+            } else if (e.key === 'Enter') {
+                const commandText = terminalInput.value;
+                terminalInput.value = '';
+                autocompleteSuggestion.innerText = "";
+                executeCommand(commandText);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    terminalInput.value = commandHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    terminalInput.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    terminalInput.value = '';
+                }
+            } else if (e.key === 'c' && e.ctrlKey) {
+                e.preventDefault();
+                triggerProcessInterrupt();
+            }
+        });
+
+        terminalInput.addEventListener('input', () => {
+            handleAutocomplete();
+        });
+
+        // Focus text element anywhere when clicked inside terminal box
+        terminalWorkspace.addEventListener('click', (e) => {
+            if (!isInputLocked && !window.getSelection().toString()) {
+                terminalInput.focus();
+            }
+        });
+
+        // Add special handlers inside Nano visual buffer editor for key interception
+        nanoTextarea.addEventListener('keydown', (e) => {
+            if (e.key === 'x' && e.ctrlKey) {
+                e.preventDefault();
+                closeNanoEditor();
+            } else if ((e.key === 'o' && e.ctrlKey) || (e.key === 's' && e.ctrlKey)) {
+                e.preventDefault();
+                saveNanoContent();
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = nanoTextarea.selectionStart;
+                const end = nanoTextarea.selectionEnd;
+                nanoTextarea.value = nanoTextarea.value.substring(0, start) + "    " + nanoTextarea.value.substring(end);
+                nanoTextarea.selectionStart = nanoTextarea.selectionEnd = start + 4;
+            }
+        });
+
+        // Window Initializer
+        window.addEventListener('load', () => {
+            refreshFileExplorer();
+            showToast("System ready. Welcome to CloudConsole!", "info");
+        });
+    </script>
 </body>
-</html> ye jo code likha hai inhe aalag aalag file main divaid karke do
+</html>
