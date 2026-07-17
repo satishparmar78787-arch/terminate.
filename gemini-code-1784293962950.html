@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Cloud & SSH Web Terminal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom CSS Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="text-slate-200 min-h-screen flex flex-col p-4 md:p-8">
+
+    <!-- Terminal Container -->
+    <div class="max-w-6xl w-full mx-auto flex-1 flex flex-col bg-[#080c14] border border-slate-800 rounded-lg overflow-hidden shadow-2xl">
+        
+        <!-- Window Header -->
+        <div class="bg-[#0f1524] px-4 py-3 border-b border-slate-800/80 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-rose-500 animate-pulse"></span>
+                <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                <span class="text-xs text-slate-400 ml-2 font-semibold" id="terminal-title">root@cloud-shell: ~/workspace</span>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-slate-500">
+                <span id="network-badge" class="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-bold">LOCAL HYBRID ENGINE</span>
+                <span>bash 5.2</span>
+            </div>
+        </div>
+
+        <!-- Terminal Workspace Area -->
+        <div id="terminal-body" class="flex-1 p-6 overflow-y-auto space-y-4 text-sm flex flex-col justify-between">
+            
+            <!-- Terminal History Logs -->
+            <div id="terminal-history" class="space-y-3">
+                <div class="text-indigo-400 font-bold tracking-wide text-base leading-none">
+ _____  _____ _    _  __         ___      _______ 
+/ ____|/ ____| |  | | \ \        / / |    |__   __|
+| (___ | (___ | |__| |  \ \  /\  / /| |__      | |   
+ \___ \ \___ \|  __  |   \ \/  \/ / | '_ \     | |   
+ ____) |____) | |  | |    \  /\  /  | |_) |    | |   
+|_____/|_____/|_|  |_|     \/  \/   |_.__/     |_|   
+                </div>
+                <div class="text-xs text-slate-400 mt-2">
+                    System active with local VM emulation. Secure SSH protocol ready for production machines.
+                    <br>Type <span class="text-emerald-400 font-bold">ssh user@host</span> to connect your remote live server directly from this web page!
+                </div>
+                <hr class="border-slate-800/60 my-2">
+            </div>
+
+            <!-- Active Input Line -->
+            <div class="mt-auto pt-4 border-t border-slate-900/60 flex items-center gap-2">
+                <span id="prompt-decorator" class="text-emerald-500 font-bold shrink-0">root@cloud-shell:<span id="current-path" class="text-cyan-400">~</span>#</span>
+                <input type="text" id="terminal-input" autofocus autocomplete="off" class="bg-transparent text-slate-100 flex-1 outline-none border-none focus:ring-0 font-medium placeholder-slate-600" placeholder="Type command (e.g. ssh user@yourserver.com)..." />
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive SSH Connection Overlay Model (For Web Handshake) -->
+    <div id="ssh-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-[#0c101b] border border-indigo-500/40 max-w-md w-full rounded-lg shadow-2xl p-6">
+            <h3 class="text-lg font-bold text-indigo-400 flex items-center gap-2 mb-2">
+                🔑 Establish Secure Tunnel Connection
+            </h3>
+            <p class="text-xs text-slate-400 mb-6">Enter details to bridge a secure SSH link to your target server.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target SSH Host Address</label>
+                    <input type="text" id="ssh-host" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" placeholder="e.g. 192.168.1.100 or myserver.com">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Username</label>
+                        <input type="text" id="ssh-user" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" placeholder="ubuntu / root">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Port</label>
+                        <input type="number" id="ssh-port" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" value="22">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Authentication Method</label>
+                    <select id="ssh-auth" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" onchange="toggleSSHFields()">
+                        <option value="password">Password</option>
+                        <option value="key">Private SSH Key (.pem / .id_rsa)</option>
+                    </select>
+                </div>
+                <div id="ssh-pass-wrapper">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Password</label>
+                    <input type="password" id="ssh-password" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" placeholder="••••••••">
+                </div>
+                <div id="ssh-key-wrapper" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Private Key String</label>
+                    <textarea id="ssh-key" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-xs text-slate-100 outline-none focus:border-indigo-500 h-24 font-mono" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
+                </div>
+                <div class="flex gap-3 justify-end pt-2">
+                    <button onclick="closeSSHModal()" class="px-4 py-2 rounded text-sm font-semibold bg-slate-900 border border-slate-800 hover:bg-slate-800 transition">Cancel</button>
+                    <button onclick="connectSSH()" class="px-4 py-2 rounded text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg shadow-indigo-600/35">Tunnel & Connect</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Script File -->
+    <script src="script.js"></script>
+</body>
+</html>
