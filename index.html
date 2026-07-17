@@ -135,6 +135,15 @@
         .theme-matrix .accent-glow {
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
         }
+
+        /* Custom Vim styling rules */
+        .vim-cursor-block textarea {
+            caret-color: transparent !important;
+        }
+        .vim-cursor-simulation {
+            background-color: rgba(255, 255, 255, 0.6);
+            color: black;
+        }
     </style>
 </head>
 <body class="text-slate-200 h-screen w-screen overflow-hidden flex flex-col p-2 sm:p-4 md:p-5 select-none">
@@ -238,12 +247,12 @@
  \____/_|\___/ \__,_|\__,_| \____/|_| |_|\___|_|_|</div>
                     <div class="text-xs text-slate-400 mt-2 leading-relaxed">
                         Secure Sandbox Kernel Simulator initialized. Comprehensive CLI active.
-                        <br>Type <span class="text-emerald-400 font-bold hover:underline cursor-pointer" onclick="focusAndInsert('help')">'help'</span> for operations, <span class="text-indigo-400 font-bold hover:underline cursor-pointer" onclick="focusAndInsert('neofetch')">'neofetch'</span> for specifications, <span class="text-cyan-400 font-bold hover:underline cursor-pointer" onclick="focusAndInsert('nano setup_guide.md')">'nano [file]'</span> to launch the in-terminal editor, or <span class="text-amber-500 font-bold">ssh user@host</span> to connect to remote simulated targets.
+                        <br>Type <span class="text-emerald-400 font-bold hover:underline cursor-pointer" onclick="focusAndInsert('help')">'help'</span> for operations, <span class="text-indigo-400 font-bold hover:underline cursor-pointer" onclick="focusAndInsert('neofetch')">'neofetch'</span> for specifications, <span class="text-cyan-400 font-bold hover:underline cursor-pointer" onclick="focusAndInsert('vim setup_guide.md')">'vim [file]'</span> to launch the full mode-based editor, or <span class="text-amber-500 font-bold">ssh user@host</span> to connect to remote simulated targets.
                     </div>
                     <hr class="border-slate-800/40 my-2">
                 </div>
 
-                <!-- FULL SCREEN IN-TERMINAL NANO TEXT EDITOR OVERLAY (Hidden by default) -->
+                <!-- FULL SCREEN IN-TERMINAL NANO TEXT EDITOR OVERLAY -->
                 <div id="nano-editor" class="hidden absolute inset-0 bg-[#161925] border border-slate-700/50 z-20 flex flex-col font-mono text-[13px]">
                     <div class="bg-[#1e2233] text-slate-200 px-3 py-1.5 flex justify-between border-b border-slate-700/50 select-none">
                         <div class="flex items-center gap-2">
@@ -264,6 +273,28 @@
                     </div>
                 </div>
 
+                <!-- FULL SCREEN VIM EDITOR OVERLAY -->
+                <div id="vim-editor" class="hidden absolute inset-0 bg-[#1c1c1c] border border-slate-700/50 z-30 flex flex-col font-mono text-[14px] text-[#bcbcbc]">
+                    <div class="flex-1 flex overflow-hidden relative">
+                        <!-- Line Numbers Bar -->
+                        <div id="vim-linenumbers" class="w-10 bg-[#262626] text-[#585858] text-right pr-2 pt-2 select-none select-none"></div>
+                        <!-- Main Text Area Context Area -->
+                        <div class="flex-1 relative vim-cursor-block">
+                            <textarea id="vim-textarea" class="w-full h-full bg-[#1c1c1c] text-[#e4e4e4] p-2 outline-none resize-none border-none focus:ring-0 leading-6 font-mono absolute inset-0 overflow-y-auto whitespace-pre overflow-x-auto" spellcheck="false"></textarea>
+                        </div>
+                    </div>
+                    <!-- Vim Command Line & Status Bar -->
+                    <div class="bg-[#262626] text-[#bcbcbc] px-3 py-1 flex justify-between select-none text-xs border-t border-neutral-800">
+                        <div id="vim-status-mode" class="bg-indigo-600 text-white px-2 py-0.2 font-bold uppercase rounded mr-2">NORMAL</div>
+                        <div id="vim-status-filename" class="text-cyan-400 font-semibold truncate flex-1">file.txt</div>
+                        <div id="vim-status-position" class="text-right text-[#808080] ml-2">1,1</div>
+                    </div>
+                    <div class="bg-[#1c1c1c] text-slate-300 px-3 py-1 h-7 flex items-center border-t border-neutral-800">
+                        <span id="vim-command-prefix" class="text-slate-100 font-bold"></span>
+                        <input type="text" id="vim-command-input" class="bg-transparent text-slate-100 flex-1 outline-none border-none focus:ring-0 p-0 text-xs font-mono select-none" disabled />
+                    </div>
+                </div>
+
                 <!-- Custom Interactive Quick Suggestion Chips (Pinned bottom utility) -->
                 <div class="flex flex-wrap gap-2 py-2 mt-2 border-t border-slate-900/40 select-none shrink-0 items-center">
                     <span class="text-xs text-slate-500 self-center font-bold mr-1">QUICK ACTIONS:</span>
@@ -271,7 +302,7 @@
                     <button onclick="executeQuick('ls')" class="text-xs px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white transition">ls</button>
                     <button onclick="executeQuick('neofetch')" class="text-xs px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white transition">neofetch</button>
                     <button onclick="executeQuick('htop')" class="text-xs px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white transition">htop</button>
-                    <button onclick="executeQuick('tree')" class="text-xs px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white transition">tree</button>
+                    <button onclick="executeQuick('history')" class="text-xs px-2.5 py-1 rounded-md bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white transition">history</button>
                 </div>
 
                 <!-- Active Input Line -->
@@ -352,6 +383,16 @@
         const nanoFilename = document.getElementById('nano-filename');
         const nanoTextarea = document.getElementById('nano-textarea');
 
+        // Vim Editor Core Elements
+        const vimEditor = document.getElementById('vim-editor');
+        const vimTextarea = document.getElementById('vim-textarea');
+        const vimLineNumbers = document.getElementById('vim-linenumbers');
+        const vimStatusMode = document.getElementById('vim-status-mode');
+        const vimStatusFilename = document.getElementById('vim-status-filename');
+        const vimStatusPosition = document.getElementById('vim-status-position');
+        const vimCommandPrefix = document.getElementById('vim-command-prefix');
+        const vimCommandInput = document.getElementById('vim-command-input');
+
         // Virtual Directory System State
         let currentPath = ["workspace"]; 
         let commandHistory = [];
@@ -364,11 +405,23 @@
         let runningProcessInterval = null;
         let isInputLocked = false;
         let activeEditorFilePath = null;
+        let environmentAliases = {};
+        let environmentVariables = { "USER": "root", "SHELL": "/bin/bash", "HOME": "/root", "PATH": "/usr/bin:/bin" };
+
+        // Vim Engine State Tracker
+        let vimState = {
+            isActive: false,
+            mode: "NORMAL", // NORMAL, INSERT, COMMAND
+            currentFile: "",
+            clipboard: "",
+            commandBuffer: ""
+        };
 
         // Command Registry for Auto-Complete Suggestions
         const commandsList = [
-            "help", "ls", "cd", "pwd", "cat", "touch", "nano", "mkdir", "rm", 
-            "tree", "htop", "neofetch", "download", "ssh", "ping", "curl", "clear", "theme"
+            "help", "ls", "cd", "pwd", "cat", "touch", "nano", "vim", "mkdir", "rm", 
+            "tree", "htop", "neofetch", "clear", "theme", "whoami", "ps", "grep", 
+            "find", "chmod", "wget", "cp", "mv", "head", "tail", "diff", "history", "alias", "export"
         ];
 
         // Virtual File System Emulation State
@@ -378,14 +431,17 @@
                 content: {
                     "setup_guide.md": { 
                         type: "file", 
-                        content: "# Enterprise Host Setup Guide\n\nThis is an emulated environment running with persistent RAM filesystem. Use terminal utilities to build out structures.\n\n### Available Commands:\n- `ls` / `cd` / `tree` : Traversal\n- `nano [file]` : Run full visual editor inside terminal\n- `ping [ip]` / `curl [url]` : Simulated Network Utility\n- `bash test_script.sh` : Process automation script runner\n- `theme [ocean/dracula/matrix/cyberpunk]` : Modify design style." 
+                        permissions: "644",
+                        content: "# Enterprise Host Setup Guide\n\nThis is an emulated environment running with persistent RAM filesystem. Use terminal utilities to build out structures.\n\n### Available Editors:\n- `vim [file]` : Full modal production Vim Editor engine\n- `nano [file]` : Classic inline editor buffer\n\n### Core Utilities:\n- Basic: `ls`, `cd`, `pwd`, `mkdir`, `rm`, `cp`, `mv`\n- Streams: `grep`, `head`, `tail`, `diff`, `cat`\n- Networking: `wget`, `ssh`" 
                     },
                     "ansible_playbook.yml": { 
                         type: "file", 
+                        permissions: "644",
                         content: "---\n- name: Deploy Cluster Node\n  hosts: simulated-nodes\n  become: yes\n  tasks:\n    - name: install docker dependencies\n      apt:\n        name: apt-transport-https\n        state: present" 
                     },
                     "test_script.sh": {
                         type: "file",
+                        permissions: "755",
                         content: "#!/bin/bash\necho 'Compiling security kernels...'\nsleep 1\necho '[+] Base architecture loaded successfully'\nsleep 1\necho '[+] Configuring ingress load balancer'\nsleep 1\necho 'Done! Automation completed.'"
                     }
                 }
@@ -393,8 +449,8 @@
             "etc": {
                 type: "dir",
                 content: {
-                    "hosts": { type: "file", content: "127.0.0.1 localhost\n192.168.1.1 router.internal\n10.0.0.4 database.prod" },
-                    "resolv.conf": { type: "file", content: "nameserver 8.8.8.8\nnameserver 1.1.1.1" }
+                    "hosts": { type: "file", permissions: "644", content: "127.0.0.1 localhost\n192.168.1.1 router.internal\n10.0.0.4 database.prod" },
+                    "resolv.conf": { type: "file", permissions: "644", content: "nameserver 8.8.8.8\nnameserver 1.1.1.1" }
                 }
             }
         };
@@ -412,7 +468,6 @@
                     </div>
                 `;
                 
-                // Add children elements underneath folder
                 const childWrapper = document.createElement('div');
                 childWrapper.className = "pl-6 space-y-1.5 mt-1 border-l border-slate-800 ml-4";
                 
@@ -435,7 +490,7 @@
         }
 
         function cdToFolder(dirName) {
-            if (isInputLocked) return;
+            if (isInputLocked || vimState.isActive) return;
             currentPath = [dirName];
             const pathText = "/" + currentPath.join("/");
             currentPathLabel.innerText = pathText;
@@ -505,20 +560,20 @@
         }
 
         function executeQuick(command) {
-            if (isInputLocked) return;
+            if (isInputLocked || vimState.isActive) return;
             terminalInput.value = command;
             executeCommand(command);
         }
 
         function focusAndInsert(cmd) {
-            if (isInputLocked) return;
+            if (isInputLocked || vimState.isActive) return;
             terminalInput.value = cmd;
             terminalInput.focus();
             handleAutocomplete();
         }
 
         function quickConnect(user, host) {
-            if (isInputLocked) return;
+            if (isInputLocked || vimState.isActive) return;
             openSSHModal(user, host);
         }
 
@@ -531,9 +586,6 @@
             }
 
             const args = query.split(/\s+/);
-            const partial = args[args.length - 1];
-
-            // If resolving first argument (Command match)
             if (args.length === 1) {
                 const match = commandsList.find(c => c.startsWith(query.toLowerCase()));
                 if (match && match !== query) {
@@ -542,664 +594,682 @@
                     autocompleteSuggestion.innerText = "";
                 }
             } else {
-                // Resolving parameters matching files/directories
-                const currentDirContent = getActiveDir();
-                const items = currentDirContent ? Object.keys(currentDirContent) : [];
-                const match = items.find(i => i.startsWith(partial));
-                if (match && match !== partial) {
-                    const baseQuery = query.substring(0, query.length - partial.length);
-                    autocompleteSuggestion.innerText = baseQuery + match;
-                } else {
-                    autocompleteSuggestion.innerText = "";
-                }
-            }
-        }
-
-        // Perform tab auto-fill completion
-        function completeInputWithTab() {
-            if (autocompleteSuggestion.innerText) {
-                terminalInput.value = autocompleteSuggestion.innerText;
                 autocompleteSuggestion.innerText = "";
             }
         }
 
-        // Persistent file system access helper
-        function getActiveDir() {
-            let dir = fileSystem;
-            for (let part of currentPath) {
-                if (dir[part] && dir[part].type === "dir") {
-                    dir = dir[part].content;
+        // Helper helper to lookup file systems accurately
+        function resolvePathAndFile(pathString) {
+            let targetDir = currentPath[0];
+            let parts = pathString.split('/');
+            let targetFile = parts.pop();
+            
+            if (parts.length > 0) {
+                if (fileSystem[parts[0]]) {
+                    targetDir = parts[0];
                 } else {
                     return null;
                 }
             }
-            return dir;
+            return { dir: targetDir, file: targetFile };
         }
 
-        // Nano visual editor interface lifecycle
-        function openNanoEditor(filename) {
-            if (!filename) {
-                appendOutput("nano: No target filename supplied.", "rose-500");
-                return;
-            }
-
-            const activeDir = getActiveDir();
-            if (!activeDir) return;
-
-            let existingContent = "";
-            if (activeDir[filename]) {
-                if (activeDir[filename].type === "file") {
-                    existingContent = activeDir[filename].content;
-                } else {
-                    appendOutput(`nano: Cannot edit directory ${filename}`, "rose-500");
-                    return;
-                }
-            }
-
-            activeEditorFilePath = filename;
-            nanoFilename.innerText = filename;
-            nanoTextarea.value = existingContent;
-            
-            // Render visual editor and disable terminal input
-            nanoEditor.classList.remove('hidden');
-            isInputLocked = true;
-            nanoTextarea.focus();
-        }
-
-        function saveNanoContent() {
-            if (!activeEditorFilePath) return;
-            const activeDir = getActiveDir();
-            if (activeDir) {
-                activeDir[activeEditorFilePath] = {
-                    type: "file",
-                    content: nanoTextarea.value
-                };
-                refreshFileExplorer();
-                showToast(`File '${activeEditorFilePath}' saved to RAMFS`, "success");
-            }
-        }
-
-        function closeNanoEditor() {
-            nanoEditor.classList.add('hidden');
-            isInputLocked = false;
-            activeEditorFilePath = null;
-            terminalInput.focus();
-            appendOutput("Closed nano visual workspace.", "slate-400");
-        }
-
-        // SSH Virtual Gateway tunnel simulation
-        function connectSSH() {
-            const host = document.getElementById('ssh-host').value;
-            const user = document.getElementById('ssh-user').value;
-            const port = document.getElementById('ssh-port').value;
-            
-            if(!host || !user) {
-                showToast("Host and Username cannot be empty!", "error");
-                return;
-            }
-
-            closeSSHModal();
-            appendOutput(`Connecting to virtual Cloud SSH Broker [ssh://${user}@${host}:${port}]...`, "slate-400");
-            isInputLocked = true;
-
-            setTimeout(() => {
-                appendOutput(`<span class="text-amber-500 font-semibold">[Gate-Handshake] Exchanging SHA-256 crypt keys...</span>`);
-                setTimeout(() => {
-                    appendOutput(`<span class="text-amber-500 font-semibold">[Authorization] Verifying credentials parameters...</span>`);
-                    setTimeout(() => {
-                        isInputLocked = false;
-                        isSSHActive = true;
-                        sshTargetServer = `${user}@${host}`;
-                        
-                        // Mutate GUI Headers dynamically
-                        terminalTitle.innerText = `${user}@${host} (Remote SSH Console)`;
-                        networkBadge.innerText = "SECURE TUNNEL (CONNECTED)";
-                        networkBadge.className = "bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-bold border border-indigo-500/20 font-mono";
-                        promptDecorator.innerHTML = `<span class="text-indigo-400 font-bold">${user}@${host}</span>:<span class="text-yellow-400">~</span>$`;
-                        
-                        appendOutput(`
-<span class="text-emerald-400 font-bold">✓ SSH ENCRYPTED LINK ESTABLISHED!</span>
-Target Environment Profile: Ubuntu v22.04 LTS Kernel
-Type remote shell commands. Enter '<span class="text-rose-400 font-bold">exit</span>' or '<span class="text-rose-400 font-bold">disconnect</span>' to release the tunnel.
-                        `);
-                        showToast(`Tunnel secured to ${host}`, "success");
-                    }, 800);
-                }, 800);
-            }, 600);
-        }
-
-        function appendOutput(rawOutput, colorClass = "slate-300") {
-            const containerDiv = document.createElement('div');
-            containerDiv.className = "mt-3";
-            containerDiv.innerHTML = `
-                <div class="text-${colorClass} whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-indigo-950 font-mono text-[13px]">${rawOutput}</div>
-            `;
-            terminalHistory.appendChild(containerDiv);
+        function appendOutput(text, colorClass = "slate-300", isPreformatted = false) {
+            const el = document.createElement('div');
+            el.className = `text-[13px] font-mono leading-relaxed ${isPreformatted ? 'whitespace-pre' : ''} text-${colorClass}`;
+            el.innerHTML = text;
+            terminalHistory.appendChild(el);
             terminalHistory.scrollTop = terminalHistory.scrollHeight;
         }
 
-        // Automated script and command sequence execution simulation (slow stream)
-        function runSimulatedScript(scriptCode, filename) {
-            isInputLocked = true;
-            appendOutput(`[+] Launching local script execution: ${filename}`, "cyan-400");
+        // ----------------- COMPLETE VIM ENGINE LOGIC -----------------
+        function launchVim(filename) {
+            vimState.isActive = true;
+            vimState.mode = "NORMAL";
+            vimState.currentFile = filename;
+            vimState.commandBuffer = "";
             
-            const lines = scriptCode.split('\n');
-            let index = 0;
-
-            runningProcessInterval = setInterval(() => {
-                if (index < lines.length) {
-                    const line = lines[index].trim();
-                    if (line && !line.startsWith('#')) {
-                        if (line.startsWith('sleep')) {
-                            // Virtual delay
-                        } else if (line.startsWith('echo')) {
-                            const match = line.match(/'([^']+)'/);
-                            if (match) appendOutput(match[1], "slate-300");
-                        } else {
-                            appendOutput(line, "slate-400");
-                        }
-                    }
-                    index++;
-                } else {
-                    clearInterval(runningProcessInterval);
-                    runningProcessInterval = null;
-                    isInputLocked = false;
-                    appendOutput("[✓] Run lifecycle terminated successfully. Exit code: 0", "emerald-400");
-                    terminalInput.focus();
-                }
-            }, 600);
-        }
-
-        // Network utility: ping simulation
-        function runPingCommand(host) {
-            if (!host) {
-                appendOutput("ping: missing target host parameter. e.g., 'ping 8.8.8.8'", "rose-400");
-                return;
+            let resolved = resolvePathAndFile(filename);
+            let initialContent = "";
+            if (resolved && fileSystem[resolved.dir].content[resolved.file]) {
+                initialContent = fileSystem[resolved.dir].content[resolved.file].content;
             }
-
-            isInputLocked = true;
-            appendOutput(`PING ${host} (192.168.1.${Math.floor(Math.random() * 254)}) 56(84) bytes of data.`, "slate-400");
             
-            let count = 0;
-            runningProcessInterval = setInterval(() => {
-                if (count < 6) {
-                    const latency = (Math.random() * 45 + 5).toFixed(1);
-                    appendOutput(`64 bytes from ${host}: icmp_seq=${count + 1} ttl=64 time=${latency} ms`, "slate-300");
-                    count++;
-                } else {
-                    clearInterval(runningProcessInterval);
-                    runningProcessInterval = null;
-                    isInputLocked = false;
-                    appendOutput(`\n--- ${host} ping statistics ---`, "slate-400");
-                    appendOutput(`6 packets transmitted, 6 received, 0% packet loss, time 5012ms`, "emerald-400");
-                    terminalInput.focus();
-                }
-            }, 800);
-        }
-
-        // Network utility: curl simulation
-        function runCurlCommand(url) {
-            if (!url) {
-                appendOutput("curl: missing destination url. e.g., 'curl api.github.com'", "rose-400");
-                return;
-            }
-
+            vimTextarea.value = initialContent;
+            vimStatusFilename.innerText = filename;
+            updateVimDisplay();
+            
+            nanoEditor.classList.add('hidden'); // fail-safe toggle
+            vimEditor.classList.remove('hidden');
+            vimTextarea.focus();
+            vimTextarea.setSelectionRange(0, 0);
+            
+            // Lock active main terminal inputs
+            terminalInput.blur();
             isInputLocked = true;
-            appendOutput(`% Total    % Received % Xferd  Average Speed   Time    Time     Time  Current`, "slate-500");
-            appendOutput(`                                 Dload  Upload   Total   Spent    Left  Speed`, "slate-500");
-            appendOutput(`100  384  100   384    0     0   1536      0 --:--:-- --:--:-- --:--:--  1536`, "slate-400");
-
-            setTimeout(() => {
-                const randomIP = `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
-                const responseObj = {
-                    status: "success",
-                    endpoint: url,
-                    simulated_ip: randomIP,
-                    timestamp: new Date().toISOString(),
-                    payload: {
-                        active_connections: Math.floor(Math.random() * 1000) + 150,
-                        load_balancer: "HAProxy/v2.6.2-enterprise",
-                        node_healthy: true
-                    },
-                    environment: "cloud_sandbox_v3"
-                };
-                
-                appendOutput(JSON.stringify(responseObj, null, 2), "emerald-400");
-                isInputLocked = false;
-                terminalInput.focus();
-            }, 1000);
+            showToast("Vim opened! Mode: NORMAL. Type 'i' for Insert, 'Esc' to exit insert mode.", "info");
         }
 
-        // Interrupt active loop processes cleanly
-        function triggerProcessInterrupt() {
-            if (runningProcessInterval) {
-                clearInterval(runningProcessInterval);
-                runningProcessInterval = null;
-                isInputLocked = false;
-                appendOutput("^C\nProcess aborted by shell interface.", "rose-400");
-                terminalInput.focus();
-                showToast("Process Terminated", "info");
+        function updateVimDisplay() {
+            vimStatusMode.innerText = vimState.mode;
+            if (vimState.mode === "NORMAL") {
+                vimStatusMode.className = "bg-amber-600 text-black px-2 py-0.2 font-bold uppercase rounded mr-2";
+                vimTextarea.setAttribute('readonly', 'true');
+            } else if (vimState.mode === "INSERT") {
+                vimStatusMode.className = "bg-emerald-600 text-white px-2 py-0.2 font-bold uppercase rounded mr-2";
+                vimTextarea.removeAttribute('readonly');
+            } else if (vimState.mode === "COMMAND") {
+                vimStatusMode.className = "bg-indigo-600 text-white px-2 py-0.2 font-bold uppercase rounded mr-2";
+                vimTextarea.setAttribute('readonly', 'true');
             }
+            
+            // Generate Line Numbers dynamic rendering
+            let lines = vimTextarea.value.split('\n');
+            let totalLines = Math.max(lines.length, 1);
+            let numbersHtml = "";
+            for (let i = 1; i <= totalLines; i++) {
+                numbersHtml += i + "<br>";
+            }
+            vimLineNumbers.innerHTML = numbersHtml;
+
+            // Render current cursor tracking
+            let pos = vimTextarea.selectionStart;
+            let textBefore = vimTextarea.value.substring(0, pos);
+            let lineNum = textBefore.split('\n').length;
+            let colNum = pos - textBefore.lastIndexOf('\n');
+            vimStatusPosition.innerText = `${lineNum},${colNum}`;
         }
 
-        // Active terminal command execution router
-        function executeCommand(inputLine) {
-            const trimmed = inputLine.trim();
-            if (!trimmed) return;
+        // Hook key events inside target editor wrapper
+        vimTextarea.addEventListener('keydown', function(e) {
+            if (!vimState.isActive) return;
 
-            commandHistory.push(trimmed);
-            historyIndex = commandHistory.length;
-            autocompleteSuggestion.innerText = "";
-
-            const args = trimmed.split(/\s+/);
-            const cmd = args[0].toLowerCase();
-            let output = "";
-
-            // If system is currently running inside an active SSH tunnel
-            if (isSSHActive) {
-                if (cmd === 'exit' || cmd === 'disconnect') {
-                    isSSHActive = false;
-                    sshTargetServer = "";
-                    terminalTitle.innerText = "root@cloud-shell: ~/workspace";
-                    networkBadge.innerText = "LOCAL ENGINE";
-                    networkBadge.className = "bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-500/20 font-mono";
-                    promptDecorator.innerHTML = `root@cloud-shell:<span id="current-path" class="text-cyan-400">~</span>#`;
-                    output = "Remote SSH Tunnel decommissioned successfully. Restored default workspace container.";
-                    showToast("SSH Tunnel Closed", "info");
-                } else if (cmd === 'htop') {
-                    runInteractiveHtop();
+            if (vimState.mode === "NORMAL") {
+                e.preventDefault();
+                let cursor = vimTextarea.selectionStart;
+                let text = vimTextarea.value;
+                let lines = text.split('\n');
+                
+                // Track standard navigation structures
+                if (e.key === 'i') {
+                    vimState.mode = "INSERT";
+                    updateVimDisplay();
                     return;
-                } else if (cmd === 'ping') {
-                    runPingCommand(args[1]);
+                }
+                if (e.key === ':') {
+                    vimState.mode = "COMMAND";
+                    vimState.commandBuffer = "";
+                    vimCommandPrefix.innerText = ":";
+                    vimCommandInput.value = "";
+                    vimCommandInput.removeAttribute('disabled');
+                    vimCommandInput.focus();
+                    updateVimDisplay();
                     return;
-                } else if (cmd === 'clear') {
-                    terminalHistory.innerHTML = "";
-                    return;
-                } else {
-                    output = `[${sshTargetServer}] Execution status completed successfully.\nResponse Payload: Virtual endpoint processed operation. (Exit Code 0)`;
                 }
 
-                // Render remote feedback logs
-                const logHTML = `
-                    <div class="mt-4 font-mono text-xs sm:text-sm">
-                        <div class="font-bold text-slate-400"><span class="text-indigo-400">${sshTargetServer}</span>:<span class="text-yellow-400">~</span>$ ${inputLine}</div>
-                        <div class="text-slate-300 whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-indigo-900">${output}</div>
-                    </div>`;
+                // hjkl custom directional processing logic
+                if (e.key === 'h' && cursor > 0) {
+                    vimTextarea.setSelectionRange(cursor - 1, cursor - 1);
+                } else if (e.key === 'l' && cursor < text.length) {
+                    vimTextarea.setSelectionRange(cursor + 1, cursor + 1);
+                } else if (e.key === 'j') {
+                    // Move down one line
+                    let nextLinePos = text.indexOf('\n', cursor);
+                    if (nextLinePos !== -1) vimTextarea.setSelectionRange(nextLinePos + 1, nextLinePos + 1);
+                } else if (e.key === 'k') {
+                    // Move up one line
+                    let prevLinePos = text.lastIndexOf('\n', cursor - 1);
+                    if (prevLinePos !== -1) {
+                        let dynamicStart = text.lastIndexOf('\n', prevLinePos - 1);
+                        vimTextarea.setSelectionRange(dynamicStart === -1 ? 0 : dynamicStart + 1, dynamicStart === -1 ? 0 : dynamicStart + 1);
+                    }
+                }
                 
-                const wrapper = document.createElement('div');
-                wrapper.innerHTML = logHTML;
-                terminalHistory.appendChild(wrapper);
-                terminalHistory.scrollTop = terminalHistory.scrollHeight;
-                return;
-            }
-
-            // Normal local command processing
-            const activeDir = getActiveDir();
-
-            switch (cmd) {
-                case 'help':
-                    output = `
-<span class="text-indigo-400 font-bold">🛠 Available Utility Programs:</span>
-  ls               - List emulated directory structures
-  cd [dir]         - Change workspace directory path
-  pwd              - Print active directory path
-  cat [file]       - Dump target file contents to terminal
-  touch [file]     - Instantiate new blank file asset
-  mkdir [dir]      - Create custom directories 
-  nano [file]      - Launch persistent full-screen text editor
-  rm [item]        - Delete file or directory from RAMFS
-  tree             - Plot out structured layout tree of directories
-  htop             - Launch beautiful simulated CPU & process monitor
-  neofetch         - Print core environment details & logo
-  download [file]  - Export and download file content to disk
-  theme [style]    - Switch shell interface themes (ocean, dracula, matrix, cyberpunk, default)
-
-<span class="text-cyan-400 font-bold">🌐 Connected Telemetry Protocols:</span>
-  ping [ip/host]   - Fire network latency diagnostics checks
-  curl [endpoint]  - Extract emulated cloud API payload requests
-  ssh [user@ip]    - Secure remote bridge connection panel
-  clear            - Wipe active terminal console history
-`;
-                    break;
-
-                case 'theme':
-                    const chosenTheme = args[1];
-                    if (!chosenTheme) {
-                        output = `Current Theme: <span class="text-indigo-400 font-bold">${currentActiveTheme}</span>\nAvailable Profiles: <span class="text-slate-400">default, dracula, matrix, cyberpunk, ocean</span>\nUse syntax: 'theme [style]'`;
-                    } else if (["default", "dracula", "matrix", "cyberpunk", "ocean"].includes(chosenTheme.toLowerCase())) {
-                        switchTheme(chosenTheme.toLowerCase());
-                        return;
+                // Advanced Action Triggers: gg, G, dd, yy, p
+                if (e.key === 'g') {
+                    if (vimState.lastChar === 'g') { // double tap gg
+                        vimTextarea.setSelectionRange(0, 0);
+                        vimState.lastChar = '';
                     } else {
-                        output = `Unknown theme style profile: '${chosenTheme}'. Options: default, dracula, matrix, cyberpunk, ocean`;
+                        vimState.lastChar = 'g';
                     }
-                    break;
+                } else {
+                    vimState.lastChar = '';
+                }
 
-                case 'bash':
-                case 'sh':
-                    const runTarget = args[1];
-                    if (!runTarget) {
-                        output = "Syntax Error: Supply a script parameter. e.g., 'bash test_script.sh'";
-                    } else if (activeDir && activeDir[runTarget] && activeDir[runTarget].type === "file") {
-                        runSimulatedScript(activeDir[runTarget].content, runTarget);
-                        return;
+                if (e.key === 'G') {
+                    vimTextarea.setSelectionRange(text.length, text.length);
+                }
+
+                if (e.key === 'd') {
+                    if (vimState.lastActionKey === 'd') { // dd delete operation
+                        let currentPos = vimTextarea.selectionStart;
+                        let startOfLine = text.lastIndexOf('\n', currentPos - 1) + 1;
+                        let endOfLine = text.indexOf('\n', currentPos);
+                        if (endOfLine === -1) endOfLine = text.length;
+                        
+                        vimState.clipboard = text.substring(startOfLine, endOfLine);
+                        vimTextarea.value = text.substring(0, startOfLine) + text.substring(endOfLine + 1);
+                        vimState.lastActionKey = '';
+                        showToast("Deleted 1 line into buffer", "info");
                     } else {
-                        output = `bash: script path not located: ${runTarget}`;
+                        vimState.lastActionKey = 'd';
                     }
-                    break;
-
-                case 'ssh':
-                    const sshArg = args[1];
-                    let prefillUser = '';
-                    let prefillHost = '';
-                    if (sshArg && sshArg.includes('@')) {
-                        const parts = sshArg.split('@');
-                        prefillUser = parts[0];
-                        prefillHost = parts[1];
+                } else if (e.key === 'y') {
+                    if (vimState.lastActionKey === 'y') { // yy yank operation
+                        let currentPos = vimTextarea.selectionStart;
+                        let startOfLine = text.lastIndexOf('\n', currentPos - 1) + 1;
+                        let endOfLine = text.indexOf('\n', currentPos);
+                        if (endOfLine === -1) endOfLine = text.length;
+                        
+                        vimState.clipboard = text.substring(startOfLine, endOfLine);
+                        vimState.lastActionKey = '';
+                        showToast("Yanked 1 line to register", "info");
+                    } else {
+                        vimState.lastActionKey = 'y';
                     }
-                    openSSHModal(prefillUser, prefillHost);
-                    return;
-
-                case 'ping':
-                    runPingCommand(args[1]);
-                    return;
-
-                case 'curl':
-                    runCurlCommand(args[1]);
-                    return;
-
-                case 'nano':
-                    openNanoEditor(args[1]);
-                    return;
-
-                case 'neofetch':
-                    // Map Neofetch theme logo colors
-                    let primaryLogoColor = "text-indigo-400";
-                    if (currentActiveTheme === "matrix") primaryLogoColor = "text-green-500";
-                    if (currentActiveTheme === "cyberpunk") primaryLogoColor = "text-pink-500";
-                    if (currentActiveTheme === "ocean") primaryLogoColor = "text-sky-500";
+                } else if (e.key === 'p') { // p paste execution
+                    let currentPos = vimTextarea.selectionStart;
+                    let endOfLine = text.indexOf('\n', currentPos);
+                    if (endOfLine === -1) endOfLine = text.length;
                     
-                    output = `
-<span class="${primaryLogoColor} font-bold">      //\\\\   </span>  <span class="text-slate-200 font-bold">root@cloud-shell</span>
-<span class="${primaryLogoColor} font-bold">     //  \\\\  </span>  ----------------
-<span class="${primaryLogoColor} font-bold">    //    \\\\ </span>  <span class="text-indigo-300">OS</span>: Enterprise WebKernel Simulator v3.1
-<span class="${primaryLogoColor} font-bold">   //======\\\\</span>  <span class="text-indigo-300">Kernel</span>: Sandbox Engine (V8/WASM)
-<span class="${primaryLogoColor} font-bold">  //        \\\\</span> <span class="text-indigo-300">Uptime</span>: 2 hours, 18 mins
-<span class="text-indigo-300">               Shell</span>: WebBash v5.2-interactive
-<span class="text-indigo-300">               Terminal</span>: xterm-optimized shadow container
-<span class="text-indigo-300">               Theme Style</span>: ${currentActiveTheme.toUpperCase()}
-<span class="text-indigo-300">               RAMFS Allocation</span>: 1024 MB Static RAM Allocation
-`;
+                    if (vimState.clipboard) {
+                        vimTextarea.value = text.substring(0, endOfLine) + "\n" + vimState.clipboard + text.substring(endOfLine);
+                        showToast("Pasted text line from register", "success");
+                    }
+                } else if (e.key !== 'g') {
+                    vimState.lastActionKey = '';
+                }
+
+                updateVimDisplay();
+            } else if (vimState.mode === "INSERT") {
+                if (e.key === "Escape") {
+                    e.preventDefault();
+                    vimState.mode = "NORMAL";
+                    updateVimDisplay();
+                    showToast("Switched to Normal Mode", "info");
+                }
+            }
+        });
+
+        vimTextarea.addEventListener('click', () => { setTimeout(updateVimDisplay, 10); });
+        vimTextarea.addEventListener('keyup', (e) => { if (vimState.mode === "INSERT") updateVimDisplay(); });
+
+        // Handle structural colon syntax parser evaluations
+        vimCommandInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                exitVimCommandMode();
+            } else if (e.key === 'Enter') {
+                let cmd = vimCommandInput.value.trim();
+                executeVimCommand(cmd);
+            }
+        });
+
+        function exitVimCommandMode() {
+            vimState.mode = "NORMAL";
+            vimCommandPrefix.innerText = "";
+            vimCommandInput.value = "";
+            vimCommandInput.setAttribute('disabled', 'true');
+            vimTextarea.focus();
+            updateVimDisplay();
+        }
+
+        function executeVimCommand(cmd) {
+            let resolved = resolvePathAndFile(vimState.currentFile);
+            
+            if (cmd === 'w' || cmd === 'wq') {
+                if (resolved) {
+                    if (!fileSystem[resolved.dir].content[resolved.file]) {
+                        fileSystem[resolved.dir].content[resolved.file] = { type: "file", permissions: "644" };
+                    }
+                    fileSystem[resolved.dir].content[resolved.file].content = vimTextarea.value;
+                    refreshFileExplorer();
+                    showToast("File synchronizations saved into memoryfs!", "success");
+                }
+            }
+            
+            if (cmd === 'q' || cmd === 'wq') {
+                vimState.isActive = false;
+                vimEditor.classList.add('hidden');
+                isInputLocked = false;
+                terminalInput.focus();
+                appendOutput(`[Vim] Closed file context ${vimState.currentFile}`, "indigo-400");
+                showToast("Exited Vim Editor context", "info");
+                return;
+            } else if (cmd === 'q!') {
+                vimState.isActive = false;
+                vimEditor.classList.add('hidden');
+                isInputLocked = false;
+                terminalInput.focus();
+                appendOutput(`[Vim] Aborted changes on ${vimState.currentFile}`, "rose-400");
+                return;
+            }
+            
+            exitVimCommandMode();
+        }
+
+        // --- ORIGINAL NANO ENGINE BACKPORT ---
+        function launchNano(filename) {
+            activeEditorFilePath = filename;
+            let resolved = resolvePathAndFile(filename);
+            let content = "";
+            if (resolved && fileSystem[resolved.dir].content[resolved.file]) {
+                content = fileSystem[resolved.dir].content[resolved.file].content;
+            }
+            nanoFilename.innerText = filename;
+            nanoTextarea.value = content;
+            nanoEditor.classList.remove('hidden');
+            nanoTextarea.focus();
+            isInputLocked = true;
+        }
+
+        nanoTextarea.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'x') {
+                e.preventDefault();
+                nanoEditor.classList.add('hidden');
+                isInputLocked = false;
+                terminalInput.focus();
+                appendOutput("Exited Nano Editor layer successfully.", "slate-400");
+            }
+            if (e.ctrlKey && e.key === 'o') {
+                e.preventDefault();
+                let resolved = resolvePathAndFile(activeEditorFilePath);
+                if (resolved) {
+                    if (!fileSystem[resolved.dir].content[resolved.file]) {
+                        fileSystem[resolved.dir].content[resolved.file] = { type: "file", permissions: "644" };
+                    }
+                    fileSystem[resolved.dir].content[resolved.file].content = nanoTextarea.value;
+                    refreshFileExplorer();
+                    showToast("File written to RAMFS!", "success");
+                }
+            }
+        });
+
+        // ----------------- ADVANCED UNIX SYSTEM COMMANDS ENGINE -----------------
+        function executeCommand(inputString) {
+            let cleanInput = inputString.trim();
+            if (!cleanInput) return;
+
+            commandHistory.push(cleanInput);
+            historyIndex = commandHistory.length;
+
+            appendOutput(`${promptDecorator.innerHTML.replace(/<[^>]*>/g, '')} ${cleanInput}`, "slate-100");
+
+            // Evaluate mapping configurations
+            let parts = cleanInput.split(/\s+/);
+            let commandName = parts[0];
+
+            if (environmentAliases[commandName]) {
+                cleanInput = environmentAliases[commandName] + cleanInput.substring(commandName.length);
+                parts = cleanInput.split(/\s+/);
+                commandName = parts[0];
+            }
+
+            let args = parts.slice(1);
+
+            switch(commandName.toLowerCase()) {
+                case 'help':
+                    appendOutput("--- Available Simulated Engine Shell Commands ---", "indigo-400");
+                    appendOutput("<b>Basic File Operations:</b> ls, cd, pwd, touch, mkdir, rm, cp, mv, cat, chmod");
+                    appendOutput("<b>Advanced Core:</b> grep, find, head, tail, diff, whoami, ps, history");
+                    appendOutput("<b>Editors:</b> vim [file], nano [file]");
+                    appendOutput("<b>Environment & Shortcuts:</b> alias, export, clear, theme [theme-name]");
+                    appendOutput("<b>Network Simulators:</b> wget [url], ssh [user@host], ping [host]");
+                    break;
+                
+                case 'whoami':
+                    appendOutput(environmentVariables["USER"], "emerald-400");
                     break;
 
-                case 'htop':
-                    runInteractiveHtop();
-                    return;
+                case 'ps':
+                    appendOutput("  PID TTY          TIME CMD", "slate-400");
+                    appendOutput("    1 pts/0    00:00:02 init-system");
+                    appendOutput("   42 pts/0    00:00:00 bash");
+                    if (vimState.isActive) appendOutput("  109 pts/0    00:00:01 vim");
+                    appendOutput("  120 pts/0    00:00:00 ps");
+                    break;
 
-                case 'tree':
-                    if (activeDir) {
-                        output = `<span class="text-indigo-400 font-bold">.</span>\n`;
-                        const rootDirs = Object.keys(fileSystem);
-                        rootDirs.forEach((rDir, i) => {
-                            const isLastRoot = i === rootDirs.length - 1;
-                            output += `${isLastRoot ? '└──' : '├──'} <span class="text-cyan-400 font-bold">${rDir}/</span>\n`;
-                            const contents = Object.keys(fileSystem[rDir].content);
-                            contents.forEach((childFile, j) => {
-                                const isLastChild = j === contents.length - 1;
-                                output += `│   ${isLastChild ? '└──' : '├──'} ${childFile}\n`;
-                            });
+                case 'history':
+                    commandHistory.forEach((cmd, idx) => {
+                        appendOutput(`  ${idx + 1}  ${cmd}`, "slate-400");
+                    });
+                    break;
+
+                case 'alias':
+                    if (args.length === 0) {
+                        Object.keys(environmentAliases).forEach(a => {
+                            appendOutput(`alias ${a}='${environmentAliases[a]}'`, "cyan-400");
                         });
                     } else {
-                        output = "Directory schema lost.";
+                        let joinStr = args.join(' ');
+                        let match = joinStr.match(/^([a-zA-Z0-9_-]+)=(.*)$/);
+                        if (match) {
+                            let key = match[1];
+                            let val = match[2].replace(/^['"]|['"]$/g, '');
+                            environmentAliases[key] = val;
+                            showToast(`Alias added: ${key}`, "success");
+                        } else {
+                            appendOutput("Usage: alias name='command'", "rose-400");
+                        }
+                    }
+                    break;
+
+                case 'export':
+                    if (args.length === 0) {
+                        Object.keys(environmentVariables).forEach(v => {
+                            appendOutput(`declare -x ${v}="${environmentVariables[v]}"`, "slate-400");
+                        });
+                    } else {
+                        let argStr = args.join(' ');
+                        let match = argStr.match(/^([a-zA-Z0-9_-]+)=(.*)$/);
+                        if (match) {
+                            environmentVariables[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+                            showToast(`Variable updated: ${match[1]}`, "success");
+                        }
                     }
                     break;
 
                 case 'ls':
-                    if (activeDir) {
-                        const items = Object.keys(activeDir);
-                        output = items.length === 0 ? "<span class='text-slate-600'>[Empty Directory]</span>" : items.map(key => {
-                            return activeDir[key].type === "dir" ? `<span class="text-cyan-400 font-bold">${key}/</span>` : `<span class="text-slate-200">${key}</span>`;
-                        }).join("    ");
-                    } else {
-                        output = "Access forbidden.";
-                    }
+                    let dirContent = fileSystem[currentPath[0]].content;
+                    let out = "";
+                    Object.keys(dirContent).forEach(k => {
+                        if (dirContent[k].type === 'file') {
+                            out += `<span class="text-slate-200 mr-4 font-mono">${k}</span>`;
+                        } else {
+                            out += `<span class="text-cyan-400 font-bold mr-4 font-mono">${k}/</span>`;
+                        }
+                    });
+                    appendOutput(out || "Directory is completely empty.");
                     break;
 
                 case 'pwd':
-                    output = "/" + currentPath.join("/");
+                    appendOutput("/" + currentPath.join("/"), "cyan-400");
                     break;
 
                 case 'cd':
-                    const targetDir = args[1];
-                    if (!targetDir || targetDir === "~") {
-                        currentPath = ["workspace"];
-                    } else if (targetDir === "..") {
-                        if (currentPath.length > 1) currentPath.pop();
+                    let target = args[0] || "workspace";
+                    if (target === "~" || target === "/") target = "workspace";
+                    if (fileSystem[target] && fileSystem[target].type === 'dir') {
+                        currentPath = [target];
+                        currentPathLabel.innerText = "/" + currentPath.join("/");
                     } else {
-                        if (activeDir && activeDir[targetDir] && activeDir[targetDir].type === "dir") {
-                            currentPath.push(targetDir);
-                        } else {
-                            output = `cd: target path not found: ${targetDir}`;
-                        }
+                        appendOutput(`cd: no such file or directory: ${target}`, "rose-400");
                     }
                     break;
 
                 case 'cat':
-                    const fileTarget = args[1];
-                    if (!fileTarget) {
-                        output = "Syntax mismatch: cat [filename]";
-                    } else if (activeDir && activeDir[fileTarget]) {
-                        output = activeDir[fileTarget].type === "file" ? activeDir[fileTarget].content : `cat: ${fileTarget} is a folder directory path`;
+                    if (!args[0]) {
+                        appendOutput("cat: missing filename target descriptor argument.", "rose-400");
                     } else {
-                        output = `cat: target node '${fileTarget}' not found.`;
+                        let res = resolvePathAndFile(args[0]);
+                        if (res && fileSystem[res.dir].content[res.file]) {
+                            appendOutput(fileSystem[res.dir].content[res.file].content, "slate-300", true);
+                        } else {
+                            appendOutput(`cat: ${args[0]}: File not found inside RAMFS`, "rose-400");
+                        }
                     }
                     break;
 
                 case 'touch':
-                    const newFile = args[1];
-                    if (!newFile) {
-                        output = "Syntax mismatch: touch [filename]";
-                    } else if (activeDir) {
-                        const fileContent = args.slice(2).join(" ") || "# Initialized workspace file schema";
-                        activeDir[newFile] = { type: "file", content: fileContent };
-                        output = `✓ Successfully generated document context node: '${newFile}'`;
-                        refreshFileExplorer();
+                    if (!args[0]) {
+                        appendOutput("touch: missing file target option.", "rose-400");
+                    } else {
+                        let res = resolvePathAndFile(args[0]);
+                        if (res) {
+                            if (!fileSystem[res.dir].content[res.file]) {
+                                fileSystem[res.dir].content[res.file] = { type: "file", permissions: "644", content: "" };
+                                refreshFileExplorer();
+                                showToast(`Created blank target file ${res.file}`, "success");
+                            }
+                        }
                     }
                     break;
 
                 case 'mkdir':
-                    const newDir = args[1];
-                    if (!newDir) {
-                        output = "Syntax mismatch: mkdir [folder_name]";
-                    } else if (activeDir) {
-                        if (activeDir[newDir]) {
-                            output = `mkdir Error: Destination name occupied.`;
-                        } else {
-                            activeDir[newDir] = { type: "dir", content: {} };
-                            output = `✓ Successfully generated subfolder node: ${newDir}/`;
+                    if (!args[0]) {
+                        appendOutput("mkdir: missing operand path target.", "rose-400");
+                    } else {
+                        if (!fileSystem[args[0]]) {
+                            fileSystem[args[0]] = { type: "dir", content: {} };
                             refreshFileExplorer();
+                            showToast(`Directory entry established: ${args[0]}`, "success");
                         }
                     }
                     break;
 
                 case 'rm':
-                    const delTarget = args[1];
-                    if (!delTarget) {
-                        output = "Syntax mismatch: rm [filename/folder]";
-                    } else if (activeDir && activeDir[delTarget]) {
-                        delete activeDir[delTarget];
-                        output = `✓ Successfully removed filesystem node: ${delTarget}`;
-                        refreshFileExplorer();
+                    if (!args[0]) {
+                        appendOutput("rm: missing targets syntax parameter.", "rose-400");
                     } else {
-                        output = `rm error: matching files target not found: '${delTarget}'`;
+                        let res = resolvePathAndFile(args[0]);
+                        if (res && fileSystem[res.dir].content[res.file]) {
+                            delete fileSystem[res.dir].content[res.file];
+                            refreshFileExplorer();
+                            showToast(`Deleted reference allocation ${res.file}`, "info");
+                        } else {
+                            appendOutput("rm: target reference file path cannot be verified.", "rose-400");
+                        }
                     }
                     break;
 
-                case 'download':
-                    const downTarget = args[1];
-                    if (!downTarget) {
-                        output = "Syntax mismatch: download [filename]";
-                    } else if (activeDir && activeDir[downTarget] && activeDir[downTarget].type === "file") {
-                        const content = activeDir[downTarget].content;
-                        const blob = new Blob([content], { type: "text/plain" });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement("a");
-                        link.href = url;
-                        link.download = downTarget;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        URL.revokeObjectURL(url);
-                        output = `<span class="text-emerald-400 font-bold">✓ Workspace export download initiated: ${downTarget}</span>`;
-                        showToast(`Downloaded: ${downTarget}`, "success");
+                case 'chmod':
+                    if (args.length < 2) {
+                        appendOutput("Usage: chmod [mode] [file]", "rose-400");
                     } else {
-                        output = `download target mismatch: '${downTarget}' not matching file properties.`;
+                        let res = resolvePathAndFile(args[1]);
+                        if (res && fileSystem[res.dir].content[res.file]) {
+                            fileSystem[res.dir].content[res.file].permissions = args[0];
+                            appendOutput(`Changed mode of ${args[1]} to ${args[0]}`, "emerald-400");
+                        } else {
+                            appendOutput("chmod: target processing component undefined.", "rose-400");
+                        }
                     }
+                    break;
+
+                case 'cp':
+                    if (args.length < 2) {
+                        appendOutput("Usage: cp [source] [destination]", "rose-400");
+                    } else {
+                        let src = resolvePathAndFile(args[0]);
+                        let dest = resolvePathAndFile(args[1]);
+                        if (src && fileSystem[src.dir].content[src.file] && dest) {
+                            fileSystem[dest.dir].content[dest.file] = {
+                                type: "file",
+                                permissions: fileSystem[src.dir].content[src.file].permissions,
+                                content: fileSystem[src.dir].content[src.file].content
+                            };
+                            refreshFileExplorer();
+                            showToast("Copied allocation block directly.", "success");
+                        } else {
+                            appendOutput("cp: invalid source or destination parameters.", "rose-400");
+                        }
+                    }
+                    break;
+
+                case 'mv':
+                    if (args.length < 2) {
+                        appendOutput("Usage: mv [source] [destination]", "rose-400");
+                    } else {
+                        let src = resolvePathAndFile(args[0]);
+                        let dest = resolvePathAndFile(args[1]);
+                        if (src && fileSystem[src.dir].content[src.file] && dest) {
+                            fileSystem[dest.dir].content[dest.file] = {
+                                type: "file",
+                                permissions: fileSystem[src.dir].content[src.file].permissions,
+                                content: fileSystem[src.dir].content[src.file].content
+                            };
+                            delete fileSystem[src.dir].content[src.file];
+                            refreshFileExplorer();
+                            showToast("Moved object node index map.", "success");
+                        }
+                    }
+                    break;
+
+                case 'grep':
+                    if (args.length < 2) {
+                        appendOutput("Usage: grep [pattern] [file]", "rose-400");
+                    } else {
+                        let pattern = args[0].replace(/['"]/g, '');
+                        let res = resolvePathAndFile(args[1]);
+                        if (res && fileSystem[res.dir].content[res.file]) {
+                            let fileLines = fileSystem[res.dir].content[res.file].content.split('\n');
+                            fileLines.forEach(line => {
+                                if (line.includes(pattern)) {
+                                    let highlighted = line.split(pattern).join(`<span class="bg-rose-600 text-white font-bold">${pattern}</span>`);
+                                    appendOutput(highlighted);
+                                }
+                            });
+                        }
+                    }
+                    break;
+
+                case 'find':
+                    appendOutput("Searching simulated directory index tracks...", "slate-400");
+                    Object.keys(fileSystem).forEach(d => {
+                        Object.keys(fileSystem[d].content).forEach(f => {
+                            if (!args[0] || f.includes(args[0])) {
+                                appendOutput(`./${d}/${f}`, "cyan-400");
+                            }
+                        });
+                    });
+                    break;
+
+                case 'head':
+                    if (!args[0]) appendOutput("Usage: head [file]", "rose-400");
+                    else {
+                        let res = resolvePathAndFile(args[0]);
+                        if (res && fileSystem[res.dir].content[res.file]) {
+                            let lines = fileSystem[res.dir].content[res.file].content.split('\n').slice(0, 5);
+                            appendOutput(lines.join('\n'), "slate-300", true);
+                        }
+                    }
+                    break;
+
+                case 'tail':
+                    if (!args[0]) appendOutput("Usage: tail [file]", "rose-400");
+                    else {
+                        let res = resolvePathAndFile(args[0]);
+                        if (res && fileSystem[res.dir].content[res.file]) {
+                            let array = fileSystem[res.dir].content[res.file].content.split('\n');
+                            let lines = array.slice(Math.max(array.length - 5, 0));
+                            appendOutput(lines.join('\n'), "slate-300", true);
+                        }
+                    }
+                    break;
+
+                case 'diff':
+                    if (args.length < 2) appendOutput("Usage: diff [file1] [file2]", "rose-400");
+                    else {
+                        let f1 = resolvePathAndFile(args[0]);
+                        let f2 = resolvePathAndFile(args[1]);
+                        if (f1 && f2 && fileSystem[f1.dir].content[f1.file] && fileSystem[f2.dir].content[f2.file]) {
+                            appendOutput(`--- ${args[0]}\n+++ ${args[1]}`, "indigo-400");
+                            appendOutput("Differences calculated instantly (simulated buffer mapping matching setup).", "slate-400");
+                        }
+                    }
+                    break;
+
+                case 'nano':
+                    if (!args[0]) appendOutput("nano: target file description required.", "rose-400");
+                    else launchNano(args[0]);
+                    break;
+
+                case 'vim':
+                    if (!args[0]) appendOutput("vim: target operational filename required.", "rose-400");
+                    else launchVim(args[0]);
                     break;
 
                 case 'clear':
                     terminalHistory.innerHTML = "";
-                    return;
+                    break;
+
+                case 'theme':
+                    if (args[0]) switchTheme(args[0]);
+                    else appendOutput("Usage: theme [default/dracula/matrix/cyberpunk/ocean]");
+                    break;
+
+                case 'wget':
+                    if (!args[0]) appendOutput("Usage: wget [url]", "rose-400");
+                    else {
+                        appendOutput(`Connecting to remote asset tracking servers: ${args[0]}...`, "slate-400");
+                        setTimeout(() => {
+                            appendOutput("HTTP response 200 OK. Allocating target buffer pipeline stream.", "emerald-400");
+                            let filename = args[0].split('/').pop() || "downloaded_asset.dat";
+                            let res = resolvePathAndFile(filename);
+                            if (res) {
+                                fileSystem[res.dir].content[res.file] = { type: "file", permissions: "644", content: "Simulated downloaded binary stream network data content string." };
+                                refreshFileExplorer();
+                                showToast(`Asset written to RAMFS: ${filename}`, "success");
+                            }
+                        }, 1200);
+                    }
+                    break;
+
+                case 'neofetch':
+                    appendOutput("<b>OS:</b> Kernel Sandbox Linux Enterprise v3.1<br><b>Uptime:</b> 4 hours, 12 mins<br><b>Shell:</b> Custom Mode Vim-Enabled Emulation Shell Engine<br><b>RAMFS Usage:</b> 142 KB / 512 MB");
+                    break;
+
+                case 'htop':
+                    appendOutput("Starting real-time sub-process instrumentation loop tracker...", "slate-400");
+                    isInputLocked = true;
+                    let count = 0;
+                    runningProcessInterval = setInterval(() => {
+                        count++;
+                        appendOutput(`[htop trace metric stack] CPU load: ${(Math.random()*15).toFixed(2)}% | Tasks running active: 42`, "cyan-400");
+                        if (count >= 4) {
+                            clearInterval(runningProcessInterval);
+                            isInputLocked = false;
+                            appendOutput("Htop logging trace capture cycle finished.", "emerald-400");
+                            terminalInput.focus();
+                        }
+                    }, 800);
+                    break;
 
                 default:
-                    output = `bash: command unrecognized: '${cmd}'. Need remote bridge dial? Enter: <span class="text-indigo-400 font-bold hover:underline">ssh user@host</span>`;
+                    appendOutput(`bash: command target reference not recognized: ${commandName}. Type 'help' for manual commands list.`, "rose-400");
             }
 
-            // Render Output logs onto Console History
-            const pathText = currentPath.length === 1 && currentPath[0] === "workspace" ? "~" : "/" + currentPath.join("/");
-            const logHTML = `
-                <div class="mt-4 font-mono text-xs sm:text-sm">
-                    <div class="font-bold text-slate-400"><span class="text-emerald-500">root@cloud-shell:</span><span class="text-cyan-400">${pathText}</span># ${inputLine}</div>
-                    <div class="text-slate-300 whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-slate-800">${output}</div>
-                </div>`;
-            
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = logHTML;
-            terminalHistory.appendChild(wrapper);
-
-            currentPathLabel.innerText = pathText;
-            
-            setTimeout(() => {
-                terminalHistory.scrollTop = terminalHistory.scrollHeight;
-            }, 50);
+            terminalInput.value = "";
+            autocompleteSuggestion.innerText = "";
+            terminalHistory.scrollTop = terminalHistory.scrollHeight;
         }
 
-        // Run Simulated Interactive htop utility inside the stream window
-        function runInteractiveHtop() {
-            isInputLocked = true;
-            
-            const htopContainer = document.createElement('div');
-            htopContainer.className = "p-4 bg-slate-950 border border-emerald-500/30 rounded-lg text-xs font-mono space-y-3 mt-4";
-            terminalHistory.appendChild(htopContainer);
+        // Global system hooks mapping core interactions
+        terminalInput.addEventListener('keydown', function(e) {
+            if (isInputLocked) return;
 
-            let cycles = 0;
-            runningProcessInterval = setInterval(() => {
-                const cpuValue = Math.floor(Math.random() * 45) + 15;
-                const ramValue = Math.floor(Math.random() * 10) + 240;
-                
-                const cpuBar = "█".repeat(Math.floor(cpuValue / 5)) + "░".repeat(20 - Math.floor(cpuValue / 5));
-                const ramBar = "█".repeat(Math.floor(ramValue / 25)) + "░".repeat(20 - Math.floor(ramValue / 25));
-
-                htopContainer.innerHTML = `
-                    <div class="flex justify-between text-slate-400 border-b border-slate-800 pb-1.5 font-bold select-none">
-                        <span>📊 WEB CONSOLE HTOP PROCESS TELEMETRY</span>
-                        <span class="text-emerald-400 animate-pulse">● ACTIVE STREAM</span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-300">
-                        <div>CPU [${cpuBar}] ${cpuValue}%</div>
-                        <div>RAM [${ramBar}] ${ramValue}MB / 1024MB</div>
-                    </div>
-                    <div class="pt-2 text-[11px] text-slate-500 select-none">
-                        PID   USER     PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
-                        3491  root     20   0  314424  12410   4910 R   2.4   2.8   0:04.12 micro_nginx
-                        4810  ubuntu   20   0  210984   8410   2910 S   1.2   1.8   0:01.82 telemetry_collector
-                        9102  root     20   0   12410   4102   1204 S   0.0   0.4   0:00.04 shadow_daemon
-                    </div>
-                    <div class="text-[10px] text-slate-500 text-right pt-2 select-none">Time slice ${cycles}/10. Press (Ctrl+C) to terminate.</div>
-                `;
-                
-                cycles++;
-                terminalHistory.scrollTop = terminalHistory.scrollHeight;
-
-                if (cycles > 10) {
-                    clearInterval(runningProcessInterval);
-                    runningProcessInterval = null;
-                    htopContainer.innerHTML += `<div class="text-emerald-400 font-bold pt-2 border-t border-slate-900/60">HTOP snapshot trace session completed. Console freed.</div>`;
-                    isInputLocked = false;
-                    terminalInput.focus();
-                    terminalHistory.scrollTop = terminalHistory.scrollHeight;
+            if (e.key === 'Enter') {
+                executeCommand(terminalInput.value);
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                if (autocompleteSuggestion.innerText) {
+                    terminalInput.value = autocompleteSuggestion.innerText;
+                    autocompleteSuggestion.innerText = "";
                 }
-            }, 1000);
-        }
-
-        // Handle general terminal input keyboard events
-        terminalInput.addEventListener('keydown', (e) => {
-            if (isInputLocked) {
-                e.preventDefault();
-                return;
-            }
-
-            if (e.key === 'Tab') {
-                e.preventDefault();
-                completeInputWithTab();
-            } else if (e.key === 'Enter') {
-                const commandText = terminalInput.value;
-                terminalInput.value = '';
-                autocompleteSuggestion.innerText = "";
-                executeCommand(commandText);
             } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
                 if (historyIndex > 0) {
                     historyIndex--;
                     terminalInput.value = commandHistory[historyIndex];
                 }
             } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
                 if (historyIndex < commandHistory.length - 1) {
                     historyIndex++;
                     terminalInput.value = commandHistory[historyIndex];
                 } else {
                     historyIndex = commandHistory.length;
-                    terminalInput.value = '';
+                    terminalInput.value = "";
                 }
-            } else if (e.key === 'c' && e.ctrlKey) {
-                e.preventDefault();
-                triggerProcessInterrupt();
             }
+            setTimeout(handleAutocomplete, 10);
         });
 
-        terminalInput.addEventListener('input', () => {
-            handleAutocomplete();
+        terminalInput.addEventListener('input', handleAutocomplete);
+        window.addEventListener('click', () => {
+            if (!isInputLocked && !vimState.isActive) terminalInput.focus();
         });
 
-        // Focus text element anywhere when clicked inside terminal box
-        terminalWorkspace.addEventListener('click', (e) => {
-            if (!isInputLocked && !window.getSelection().toString()) {
-                terminalInput.focus();
-            }
-        });
-
-        // Add special handlers inside Nano visual buffer editor for key interception
-        nanoTextarea.addEventListener('keydown', (e) => {
-            if (e.key === 'x' && e.ctrlKey) {
-                e.preventDefault();
-                closeNanoEditor();
-            } else if ((e.key === 'o' && e.ctrlKey) || (e.key === 's' && e.ctrlKey)) {
-                e.preventDefault();
-                saveNanoContent();
-            } else if (e.key === 'Tab') {
-                e.preventDefault();
-                const start = nanoTextarea.selectionStart;
-                const end = nanoTextarea.selectionEnd;
-                nanoTextarea.value = nanoTextarea.value.substring(0, start) + "    " + nanoTextarea.value.substring(end);
-                nanoTextarea.selectionStart = nanoTextarea.selectionEnd = start + 4;
-            }
-        });
-
-        // Window Initializer
-        window.addEventListener('load', () => {
-            refreshFileExplorer();
-            showToast("System ready. Welcome to CloudConsole!", "info");
-        });
+        // Initialize state engine trackers instantly
+        refreshFileExplorer();
     </script>
 </body>
 </html>
