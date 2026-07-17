@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Cloud Terminal & Pipeline Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght=400;500;700&display=swap');
+        body {
+            background-color: #05070f;
+            font-family: 'Fira Code', monospace;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        @keyframes flowLeftToRight {
+            0% { left: 0%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+        .flow-dot {
+            position: absolute;
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            background-color: #38bdf8;
+            box-shadow: 0 0 10px #38bdf8;
+            animation: flowLeftToRight 2s linear infinite;
+        }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen flex flex-col p-3 md:p-6">
+
+    <!-- Workspace Main Split Container -->
+    <div class="max-w-7xl w-full mx-auto flex-1 flex flex-col bg-[#080c14] border border-slate-800 rounded-lg overflow-hidden shadow-2xl">
+        
+        <!-- Top Title Bar -->
+        <div class="bg-[#0f1524] px-4 py-3 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <img src="https://uxwing.com/wp-content/themes/uxwing/download/web-app-development/ssh-icon.svg" class="w-5 h-5 invert" alt="SSH Logo">
+                <span class="w-3 h-3 rounded-full bg-emerald-500" id="status-light"></span>
+                <span class="text-xs text-slate-400 ml-1 font-semibold" id="terminal-title">root@cloud-shell: ~/workspace</span>
+            </div>
+            
+            <!-- Quick Environment Controller -->
+            <div class="flex items-center gap-2">
+                <button id="btn-local-mode" onclick="switchToLocalMode()" class="px-3 py-1 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition">
+                    💻 Local Web Mode
+                </button>
+                <button id="btn-ssh-mode" onclick="openSSHModal()" class="px-3 py-1 rounded text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 transition">
+                    🔑 Connect SSH Server
+                </button>
+                <span id="network-badge" class="bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded text-[10px] font-bold">LOCAL VM ENGINE</span>
+            </div>
+        </div>
+
+        <!-- Inner Split Grid -->
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+            
+            <!-- LEFT PANEL: Interactive Terminal (8 Cols) -->
+            <div class="lg:col-span-8 flex flex-col justify-between p-6 border-b lg:border-b-0 lg:border-r border-slate-800/80 min-h-[450px]">
+                <!-- Terminal Logs -->
+                <div id="terminal-body" class="flex-1 overflow-y-auto space-y-4">
+                    <div id="terminal-history" class="space-y-3">
+                        <div class="text-emerald-400 font-bold tracking-wide text-xs leading-none">
+   _____ _____ _    _  __          _______ ____  _____  __  __ 
+  / ____/ ____| |  | | \ \        / /_   _/ __ \|  __ \|  \/  |
+ | (___ | (___ | |__| |  \ \  /\  / /  | || |  | | |__) | \  / |
+  \___ \ \___ \|  __  |   \ \/  \/ /   | || |  | |  _  /| |\/| |
+  ____) |____) | |  | |    \  /\  /   _| || |__| | | \ \| |  | |
+ |_____/|_____/|_|  |_|     \/  \/   |_____\____/|_|  \_\_|  |_|
+                        </div>
+                        <div class="text-xs text-slate-400 mt-2">
+                            System initialized. You can run all commands directly in <span class="text-emerald-400 font-bold">Local Web Mode</span> or connect via <span class="text-indigo-400 font-bold">SSH Server Mode</span>.
+                            <br>💡 No login needed! Run: <span class="text-cyan-400">docker run</span>, <span class="text-cyan-400">ansible</span>, <span class="text-cyan-400">ping google.com</span>, <span class="text-cyan-400">ls</span>, <span class="text-cyan-400">download setup_guide.md</span>
+                        </div>
+                        <hr class="border-slate-800/40 my-2">
+                    </div>
+                </div>
+
+                <!-- Input Row -->
+                <div class="pt-4 border-t border-slate-900/60 flex items-center gap-2">
+                    <span id="prompt-decorator" class="text-emerald-500 font-bold shrink-0">root@cloud-shell:<span id="current-path" class="text-cyan-400">~</span>#</span>
+                    <input type="text" id="terminal-input" autofocus autocomplete="off" class="bg-transparent text-slate-100 flex-1 outline-none border-none focus:ring-0 font-medium placeholder-slate-600" placeholder="Type command directly here..." />
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: Graphical Workflow Panel (4 Cols) -->
+            <div class="lg:col-span-4 bg-[#060910] p-6 flex flex-col justify-between overflow-y-auto border-t lg:border-t-0 border-slate-800/60">
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">🎯 Live Pipeline Monitor</h4>
+                        <span id="flow-status" class="flex h-2 w-2 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                    </div>
+
+                    <!-- Pipeline Graphical Representation -->
+                    <div class="bg-[#090e18] border border-slate-800/80 rounded p-4 space-y-6 relative overflow-hidden">
+                        
+                        <!-- Block 1: User Client -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="p-2 bg-emerald-500/10 rounded text-emerald-400">💻</span>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-200">Local Client</p>
+                                    <p class="text-[10px] text-slate-500">Your Browser Sandbox</p>
+                                </div>
+                            </div>
+                            <span id="client-state" class="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">ACTIVE</span>
+                        </div>
+
+                        <!-- Connector Lane 1 with Animation dots -->
+                        <div class="relative h-2 bg-slate-900 rounded my-2 overflow-hidden">
+                            <div id="flow-line-1" class="hidden absolute top-0 bottom-0 left-0 right-0">
+                                <div class="flow-dot" style="animation-delay: 0s"></div>
+                                <div class="flow-dot" style="animation-delay: 1s"></div>
+                            </div>
+                        </div>
+
+                        <!-- Block 2: Secure Tunnel Bridge / Proxy Server -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="p-2 bg-indigo-500/10 rounded text-indigo-400">🔗</span>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-200">SSH / API Bridge</p>
+                                    <p class="text-[10px] text-slate-500">Secure TLS Tunnel</p>
+                                </div>
+                            </div>
+                            <span id="bridge-state" class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">READY</span>
+                        </div>
+
+                        <!-- Connector Lane 2 -->
+                        <div class="relative h-2 bg-slate-900 rounded my-2 overflow-hidden">
+                            <div id="flow-line-2" class="hidden absolute top-0 bottom-0 left-0 right-0">
+                                <div class="flow-dot" style="animation-delay: 0.5s; background-color: #818cf8; box-shadow: 0 0 10px #818cf8;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Block 3: Target Server -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="p-2 bg-rose-500/10 rounded text-rose-400">📡</span>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-200" id="target-node-title">Target Host</p>
+                                    <p class="text-[10px] text-slate-500" id="target-node-ip">Waiting Connect</p>
+                                </div>
+                            </div>
+                            <span id="target-state" class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">DISCONNECTED</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Pipeline Console Monitor Logs -->
+                <div class="mt-6">
+                    <h5 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Internal Packet Inspector</h5>
+                    <div class="bg-[#04060b] border border-slate-900 rounded p-3 h-32 overflow-y-auto text-[11px] text-slate-400 space-y-1 font-mono" id="inspector-logs">
+                        <div class="text-slate-600">[inspector] Ready. Listening on Local/SSH ports...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SSH Connection Panel Overlay Modal -->
+    <div id="ssh-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-[#0c101b] border border-indigo-500/40 max-w-md w-full rounded-lg shadow-2xl p-6">
+            <h3 class="text-lg font-bold text-indigo-400 flex items-center gap-2 mb-2">
+                🔑 Establish Secure Tunnel Connection
+            </h3>
+            <p class="text-xs text-slate-400 mb-6">Enter details to bridge a secure SSH link to your target server.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target SSH Host Address</label>
+                    <input type="text" id="ssh-host" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" placeholder="e.g. 192.168.1.100 or myserver.com">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Username</label>
+                        <input type="text" id="ssh-user" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" placeholder="ubuntu / root">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Port</label>
+                        <input type="number" id="ssh-port" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" value="22">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Password</label>
+                    <input type="password" id="ssh-password" class="w-full bg-[#080c14] border border-slate-800 rounded px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500" placeholder="••••••••">
+                </div>
+                <div class="flex gap-3 justify-end pt-2">
+                    <button onclick="closeSSHModal()" class="px-4 py-2 rounded text-sm font-semibold bg-slate-900 border border-slate-800 hover:bg-slate-800 transition">Cancel</button>
+                    <button onclick="connectSSH()" class="px-4 py-2 rounded text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition">Tunnel & Connect</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const terminalHistory = document.getElementById('terminal-history');
+        const terminalInput = document.getElementById('terminal-input');
+        const currentPathLabel = document.getElementById('current-path');
+        const terminalBody = document.getElementById('terminal-body');
+        const sshModal = document.getElementById('ssh-modal');
+        const terminalTitle = document.getElementById('terminal-title');
+        const networkBadge = document.getElementById('network-badge');
+        const promptDecorator = document.getElementById('prompt-decorator');
+        const statusLight = document.getElementById('status-light');
+
+        // Buttons
+        const btnLocalMode = document.getElementById('btn-local-mode');
+        const btnSSHMode = document.getElementById('btn-ssh-mode');
+
+        // Graphical Workflow Elements
+        const clientState = document.getElementById('client-state');
+        const bridgeState = document.getElementById('bridge-state');
+        const targetState = document.getElementById('target-state');
+        const targetNodeTitle = document.getElementById('target-node-title');
+        const targetNodeIp = document.getElementById('target-node-ip');
+        const flowLine1 = document.getElementById('flow-line-1');
+        const flowLine2 = document.getElementById('flow-line-2');
+        const inspectorLogs = document.getElementById('inspector-logs');
+
+        // Shell State Tree
+        let currentPath = ["workspace"]; 
+        let commandHistory = [];
+        let historyIndex = -1;
+        let isSSHActive = false;
+        let sshTargetServer = "";
+
+        const fileSystem = {
+            "workspace": {
+                type: "dir",
+                content: {
+                    "setup_guide.md": { type: "file", content: "# Automation Lab Guide\nDirect web mode is active. Run commands smoothly." },
+                    "ansible_playbook.yml": { type: "file", content: "---\n- name: Local Playbook\n  hosts: localhost\n  tasks:\n    - debug: msg='Working perfectly'" }
+                }
+            }
+        };
+
+        function logInspector(msg, type = "info") {
+            let color = "text-slate-400";
+            if (type === "success") color = "text-emerald-400";
+            if (type === "warn") color = "text-amber-400";
+            if (type === "error") color = "text-rose-400";
+            inspectorLogs.innerHTML += `<div class="${color}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+            inspectorLogs.scrollTop = inspectorLogs.scrollHeight;
+        }
+
+        function triggerWorkflowVisuals(command) {
+            clientState.innerText = "ACTIVE";
+            clientState.className = "text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded";
+            
+            flowLine1.classList.remove('hidden');
+            logInspector(`CLI Input: '${command}' initiated`, "info");
+
+            if (isSSHActive) {
+                bridgeState.innerText = "TUNNELING";
+                bridgeState.className = "text-[10px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded";
+                flowLine2.classList.remove('hidden');
+                
+                targetState.innerText = "RUNNING";
+                targetState.className = "text-[10px] bg-rose-500/20 text-rose-400 px-1.5 py-0.5 rounded";
+                logInspector(`Piped packet securely over SSH to target host`, "success");
+            } else {
+                logInspector(`Executing locally via Browser Sandboxed Engine`, "info");
+            }
+
+            setTimeout(() => {
+                clientState.innerText = "IDLE";
+                clientState.className = "text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded";
+                flowLine1.classList.add('hidden');
+                if (!isSSHActive) {
+                    bridgeState.innerText = "READY";
+                    bridgeState.className = "text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded";
+                } else {
+                    bridgeState.innerText = "CONNECTED";
+                    bridgeState.className = "text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded";
+                }
+            }, 1800);
+        }
+
+        function closeSSHModal() {
+            sshModal.classList.add('hidden');
+        }
+
+        function openSSHModal(prefillUser = '', prefillHost = '') {
+            if(prefillUser) document.getElementById('ssh-user').value = prefillUser;
+            if(prefillHost) document.getElementById('ssh-host').value = prefillHost;
+            sshModal.classList.remove('hidden');
+        }
+
+        function switchToLocalMode() {
+            if (isSSHActive) {
+                isSSHActive = false;
+                sshTargetServer = "";
+                
+                // Header UI back to normal
+                terminalTitle.innerText = "root@cloud-shell: ~/workspace";
+                statusLight.className = "w-3 h-3 rounded-full bg-emerald-500";
+                networkBadge.innerText = "LOCAL VM ENGINE";
+                networkBadge.className = "bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded text-[10px] font-bold";
+                promptDecorator.innerHTML = `root@cloud-shell:<span id="current-path" class="text-cyan-400">~</span>#`;
+                
+                // Toggle Button styling
+                btnLocalMode.className = "px-3 py-1 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition";
+                btnSSHMode.className = "px-3 py-1 rounded text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 transition";
+
+                // Graphical pipeline back to normal
+                targetNodeTitle.innerText = "Target Host";
+                targetNodeIp.innerText = "Waiting Connect";
+                targetState.innerText = "DISCONNECTED";
+                targetState.className = "text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded";
+                bridgeState.innerText = "READY";
+                bridgeState.className = "text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded";
+                flowLine2.classList.add('hidden');
+
+                logInspector("Switched environment back to Local Sandbox Engine", "warn");
+                appendOutput("Switched to Local Web Mode. Running all commands natively in browser.");
+            }
+        }
+
+        function connectSSH() {
+            const host = document.getElementById('ssh-host').value;
+            const user = document.getElementById('ssh-user').value;
+            const port = document.getElementById('ssh-port').value;
+            
+            if(!host || !user) {
+                alert("Please fill host and username!");
+                return;
+            }
+
+            closeSSHModal();
+            logInspector(`Handshaking remote endpoint at ${host}...`, "warn");
+            
+            setTimeout(() => {
+                isSSHActive = true;
+                sshTargetServer = `${user}@${host}`;
+                
+                // Header Status Changes
+                terminalTitle.innerText = `${user}@${host} [Remote Session]`;
+                statusLight.className = "w-3 h-3 rounded-full bg-indigo-500 animate-pulse";
+                networkBadge.innerText = "ACTIVE SSH TUNNEL";
+                networkBadge.className = "bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded text-[10px] font-bold";
+                promptDecorator.innerHTML = `<span class="text-indigo-400 font-bold">${user}@${host}</span>:<span class="text-yellow-400">~</span>$`;
+                
+                // Toggle Button styling
+                btnLocalMode.className = "px-3 py-1 rounded text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 transition";
+                btnSSHMode.className = "px-3 py-1 rounded text-xs font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 transition";
+
+                // Graphical Nodes Changes
+                targetNodeTitle.innerText = host;
+                targetNodeIp.innerText = `Port: ${port}`;
+                targetState.innerText = "CONNECTED";
+                targetState.className = "text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded";
+                bridgeState.innerText = "CONNECTED";
+                bridgeState.className = "text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded";
+                flowLine2.classList.remove('hidden');
+
+                logInspector(`SSH Secure Connection established to ${sshTargetServer}`, "success");
+
+                appendOutput(`
+<span class="text-emerald-400 font-bold">✓ CONNECTION ESTABLISHED!</span>
+Remote Linux host mounted successfully. All operations are now routed to ${host}.
+Type '<span class="text-rose-400">exit</span>' or click 'Local Web Mode' to end session.
+                `);
+            }, 1000);
+        }
+
+        function appendOutput(rawOutput) {
+            const logHTML = `
+                <div class="mt-4">
+                    <div class="text-slate-300 whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-indigo-900">${rawOutput}</div>
+                </div>`;
+            terminalHistory.innerHTML += logHTML;
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        // Executing commands
+        function executeCommand(inputLine) {
+            const trimmed = inputLine.trim();
+            if (!trimmed) return;
+
+            commandHistory.push(trimmed);
+            historyIndex = commandHistory.length;
+
+            const args = trimmed.split(/\s+/);
+            const cmd = args[0].toLowerCase();
+            let output = "";
+
+            triggerWorkflowVisuals(cmd);
+
+            // SSH Active Routing Mode
+            if (isSSHActive) {
+                if (cmd === 'exit' || cmd === 'disconnect') {
+                    switchToLocalMode();
+                    return;
+                } else if (cmd === 'ping') {
+                    output = `PING ${args[1] || 'remote-server'} (56 bytes of data):\n64 bytes from root: icmp_seq=1 ttl=64 time=1.45 ms\n--- ${args[1] || 'remote-server'} ping statistics ---\n1 packets transmitted, 1 received, 0% loss`;
+                } else if (cmd === 'docker' || cmd === 'ansible') {
+                    output = `[${sshTargetServer}] Executed successfully on remote backend instance:\nRunning '${cmd}' structures... Completed successfully.`;
+                } else if (cmd === 'clear') {
+                    terminalHistory.innerHTML = "";
+                    return;
+                } else {
+                    output = `[${sshTargetServer}] Command dispatched:\n$ ${trimmed}\nResult: OK (Exit Code 0)`;
+                }
+
+                const logHTML = `
+                    <div class="mt-4">
+                        <div class="font-bold text-slate-400"><span class="text-indigo-400">${sshTargetServer}</span>:<span class="text-yellow-400">~</span>$ ${inputLine}</div>
+                        <div class="text-slate-300 whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-indigo-800">${output}</div>
+                    </div>`;
+                terminalHistory.innerHTML += logHTML;
+                terminalBody.scrollTop = terminalBody.scrollHeight;
+                return;
+            }
+
+            // Local System Mode Execution (No Login Needed)
+            function getActiveDir() {
+                let dir = fileSystem;
+                for (let part of currentPath) {
+                    if (dir[part] && dir[part].type === "dir") {
+                        dir = dir[part].content;
+                    } else {
+                        return null;
+                    }
+                }
+                return dir;
+            }
+
+            const activeDir = getActiveDir();
+
+            switch (cmd) {
+                case 'ssh':
+                    const sshArg = args[1];
+                    let prefillUser = '';
+                    let prefillHost = '';
+                    if (sshArg && sshArg.includes('@')) {
+                        const parts = sshArg.split('@');
+                        prefillUser = parts[0];
+                        prefillHost = parts[1];
+                    }
+                    openSSHModal(prefillUser, prefillHost);
+                    return;
+
+                case 'ping':
+                    const dest = args[1] || 'google.com';
+                    output = `PING ${dest} (142.250.190.46) 56(84) bytes of data.\n64 bytes from ${dest}: icmp_seq=1 ttl=116 time=14.2 ms\n\n--- ${dest} statistics ---\n1 packets transmitted, 1 received, 0% packet loss`;
+                    break;
+
+                case 'docker':
+                    output = `[Local Docker Engine Engine Engine Mode]\nChecking containers...\nCONTAINER ID   IMAGE          COMMAND       STATUS       NAMES\n9b12a87c53ef   alpine:latest  "/bin/sh"     Up 3 mins    local-container`;
+                    break;
+
+                case 'ansible':
+                    output = `[Local Ansible Virtual environment]\nInitializing playbook run...\nok: [localhost] -> msg="Ansible playbook ran successfully locally!"`;
+                    break;
+
+                case 'ls':
+                    if (activeDir) {
+                        const items = Object.keys(activeDir);
+                        output = items.length === 0 ? "<span class='text-slate-500'>[Empty]</span>" : items.map(key => {
+                            return activeDir[key].type === "dir" ? `<span class="text-cyan-400 font-bold">${key}/</span>` : `<span class="text-slate-200">${key}</span>`;
+                        }).join("    ");
+                    } else {
+                        output = "Error: Directory missing.";
+                    }
+                    break;
+
+                case 'cd':
+                    const targetDir = args[1];
+                    if (!targetDir || targetDir === "~") {
+                        currentPath = ["workspace"];
+                    } else if (targetDir === "..") {
+                        if (currentPath.length > 1) currentPath.pop();
+                    } else {
+                        if (activeDir && activeDir[targetDir] && activeDir[targetDir].type === "dir") {
+                            currentPath.push(targetDir);
+                        } else {
+                            output = `cd: no such directory: ${targetDir}`;
+                        }
+                    }
+                    break;
+
+                case 'cat':
+                    const fileTarget = args[1];
+                    if (!fileTarget) {
+                        output = "Usage: cat [filename]";
+                    } else if (activeDir && activeDir[fileTarget]) {
+                        output = activeDir[fileTarget].type === "file" ? activeDir[fileTarget].content : `cat: ${fileTarget}: Is a directory`;
+                    } else {
+                        output = `cat: ${fileTarget}: File not found`;
+                    }
+                    break;
+
+                case 'touch':
+                    const newFile = args[1];
+                    if (!newFile) {
+                        output = "Usage: touch [filename] [content]";
+                    } else if (activeDir) {
+                        const fileContent = args.slice(2).join(" ") || "# Sandbox virtual code";
+                        activeDir[newFile] = { type: "file", content: fileContent };
+                        output = `File '${newFile}' created.`;
+                    }
+                    break;
+
+                case 'download':
+                    const downTarget = args[1];
+                    if (!downTarget) {
+                        output = "Usage: download [filename]";
+                    } else if (activeDir && activeDir[downTarget] && activeDir[downTarget].type === "file") {
+                        const content = activeDir[downTarget].content;
+                        const blob = new Blob([content], { type: "text/plain" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = downTarget;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        output = `<span class="text-emerald-400 font-bold">✓ Download initiated for local file: ${downTarget}</span>`;
+                    } else {
+                        output = `download: '${downTarget}' not found.`;
+                    }
+                    break;
+
+                case 'clear':
+                    terminalHistory.innerHTML = "";
+                    return;
+
+                default:
+                    output = `bash: command not found: ${cmd}. You can run local docker, ansible, or connect with SSH.`;
+            }
+
+            // Print Logs
+            const pathText = currentPath.length === 1 && currentPath[0] === "workspace" ? "~" : "/" + currentPath.join("/");
+            const logHTML = `
+                <div class="mt-4">
+                    <div class="font-bold text-slate-400"><span class="text-emerald-500">root@cloud-shell:</span><span class="text-cyan-400">${pathText}</span># ${inputLine}</div>
+                    <div class="text-slate-300 whitespace-pre-wrap mt-1 leading-relaxed pl-2 border-l border-slate-800">${output}</div>
+                </div>`;
+            terminalHistory.innerHTML += logHTML;
+
+            currentPathLabel.innerText = pathText;
+            setTimeout(() => {
+                terminalBody.scrollTop = terminalBody.scrollHeight;
+            }, 50);
+        }
+
+        terminalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const commandText = terminalInput.value;
+                terminalInput.value = '';
+                executeCommand(commandText);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    terminalInput.value = commandHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    terminalInput.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    terminalInput.value = '';
+                }
+            }
+        });
+
+        terminalBody.addEventListener('click', () => {
+            terminalInput.focus();
+        });
+    </script>
+</body>
+</html>
